@@ -1,0 +1,9 @@
+{
+  "name": "Roulez Électrique (BETA)",
+  "content_in_root": false,
+  "filename": "roulezelectrique.zip",
+  "homeassistant": "2024.1.0",
+  "country": ["CA"],
+  "iot_standards": ["ocpp"],
+  "render_readme": true
+}

@@ -1,0 +1,87 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Roulez Électrique — Connexion (BÊTA / EXPÉRIMENTAL)",
+        "description": "**BÊTA / EXPÉRIMENTAL** — Cette intégration est en cours de développement. Pour obtenir votre jeton, connectez-vous à votre compte Roulez Électrique, puis allez dans **Profil → Intégrations → Home Assistant** et cliquez sur « Activer ».",
+        "data": {
+          "base_url": "URL de base",
+          "api_token": "Jeton API"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Réauthentification Roulez Électrique",
+        "description": "Votre jeton API a été révoqué ou a expiré. Générez un nouveau jeton dans **Profil → Intégrations → Home Assistant** et collez-le ci-dessous.",
+        "data": {
+          "api_token": "Nouveau jeton API"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Jeton API invalide ou révoqué. Vérifiez le jeton dans votre profil.",
+      "cannot_connect": "Impossible de se connecter au serveur. Vérifiez l'URL de base et votre connexion Internet.",
+      "invalid_scan_interval": "L'intervalle de mise à jour doit être entre 30 et 900 secondes.",
+      "unknown": "Erreur inattendue. Consultez les journaux pour plus de détails."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré.",
+      "reauth_successful": "Réauthentification réussie."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options de Roulez Électrique",
+        "data": {
+          "scan_interval": "Intervalle de mise à jour (secondes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power": {
+        "name": "Puissance"
+      },
+      "energy": {
+        "name": "Énergie session"
+      },
+      "status": {
+        "name": "Statut",
+        "state": {
+          "Available": "Disponible",
+          "Preparing": "En préparation",
+          "Charging": "En charge",
+          "SuspendedEVSE": "Suspendu (EVSE)",
+          "SuspendedEV": "Suspendu (véhicule)",
+          "Finishing": "Fin de charge",
+          "Reserved": "Réservé",
+          "Unavailable": "Indisponible",
+          "Faulted": "En panne"
+        }
+      },
+      "current": {
+        "name": "Courant"
+      },
+      "voltage": {
+        "name": "Tension"
+      },
+      "last_seen": {
+        "name": "Dernière session"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "En ligne"
+      },
+      "charging": {
+        "name": "En charge"
+      }
+    },
+    "switch": {
+      "charge": {
+        "name": "Démarrer la charge"
+      }
+    }
+  }
+}

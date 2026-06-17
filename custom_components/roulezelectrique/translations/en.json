@@ -1,0 +1,87 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Roulez Électrique — Connect (BETA / EXPERIMENTAL)",
+        "description": "**BETA / EXPERIMENTAL** — This integration is under active development and may change. To get your access token, sign in at [roulezelectrique.club](https://roulezelectrique.club), then go to **Profile → Integrations → Home Assistant** and click \"Activate\".",
+        "data": {
+          "base_url": "Base URL",
+          "api_token": "API Token"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Roulez Électrique",
+        "description": "Your API token has been revoked or expired. Generate a new token at **Profile → Integrations → Home Assistant** ({base_url}) and paste it below.",
+        "data": {
+          "api_token": "New API Token"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid or revoked API token. Please check the token in your profile.",
+      "cannot_connect": "Cannot connect to the server. Check the base URL and your internet connection.",
+      "invalid_scan_interval": "The update interval must be between 30 and 900 seconds.",
+      "unknown": "Unexpected error. Check the logs for details."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Re-authentication successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Roulez Électrique Options",
+        "data": {
+          "scan_interval": "Update interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power": {
+        "name": "Power"
+      },
+      "energy": {
+        "name": "Session energy"
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "Available": "Available",
+          "Preparing": "Preparing",
+          "Charging": "Charging",
+          "SuspendedEVSE": "Suspended (EVSE)",
+          "SuspendedEV": "Suspended (EV)",
+          "Finishing": "Finishing",
+          "Reserved": "Reserved",
+          "Unavailable": "Unavailable",
+          "Faulted": "Faulted"
+        }
+      },
+      "current": {
+        "name": "Current"
+      },
+      "voltage": {
+        "name": "Voltage"
+      },
+      "last_seen": {
+        "name": "Last session"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      },
+      "charging": {
+        "name": "Charging"
+      }
+    },
+    "switch": {
+      "charge": {
+        "name": "Start charging"
+      }
+    }
+  }
+}
