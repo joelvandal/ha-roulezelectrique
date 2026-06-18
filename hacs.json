@@ -4,6 +4,5 @@
   "filename": "roulezelectrique.zip",
   "homeassistant": "2024.1.0",
   "country": ["CA"],
-  "iot_standards": ["ocpp"],
   "render_readme": true
 }
