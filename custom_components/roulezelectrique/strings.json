@@ -11,7 +11,7 @@
       },
       "reauth_confirm": {
         "title": "Réauthentification Roulez Électrique",
-        "description": "Votre jeton API a été révoqué ou a expiré. Générez un nouveau jeton dans **Profil → Intégrations → Home Assistant** et collez-le ci-dessous.",
+        "description": "Votre jeton API a été révoqué ou a expiré. Générez un nouveau jeton dans **Profil → Intégrations → Home Assistant** ({base_url}) et collez-le ci-dessous.",
         "data": {
           "api_token": "Nouveau jeton API"
         }
@@ -111,6 +111,14 @@
     "switch": {
       "charge": {
         "name": "Démarrer la charge"
+      },
+      "lock": {
+        "name": "Verrouiller"
+      }
+    },
+    "number": {
+      "max_current": {
+        "name": "Courant de charge max"
       }
     }
   }

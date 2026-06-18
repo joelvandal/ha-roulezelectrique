@@ -25,6 +25,8 @@ from custom_components.roulezelectrique.api import ConnectError, OfflineError, R
 from custom_components.roulezelectrique.const import DOMAIN
 from custom_components.roulezelectrique.switch import RoulezElectriqueSwitch
 
+from custom_components.roulezelectrique.switch import RoulezElectriqueLockSwitch
+
 from .conftest import (
     COMMAND_ACCEPTED,
     COMMAND_REJECTED,
@@ -32,7 +34,38 @@ from .conftest import (
     NON_OCPP_CHARGER,
     OCPP_CHARGER,
     OCPP_CHARGER_CHARGING,
+    WALLBOX_CHARGER,
 )
+
+# Synchronous Wallbox-style response (no command id to poll).
+SYNC_ACCEPTED: dict[str, Any] = {"id": None, "status": "accepted", "synchronous": True}
+
+
+def _make_lock_switch(
+    charger_data: dict[str, Any],
+    set_return=None,
+    set_side_effect=None,
+) -> tuple[RoulezElectriqueLockSwitch, MagicMock]:
+    """Create a lock switch with mocked coordinator + client."""
+    from custom_components.roulezelectrique.coordinator import CoordinatorData
+
+    charger_id = charger_data["id"]
+    coordinator = MagicMock()
+    coordinator.data = CoordinatorData(chargers={charger_id: charger_data}, account=None)
+    coordinator.last_update_success = True
+    coordinator._listeners = {}
+    coordinator.async_request_refresh = AsyncMock()
+
+    client = MagicMock()
+    if set_side_effect is not None:
+        client.set_lock = AsyncMock(side_effect=set_side_effect)
+    else:
+        client.set_lock = AsyncMock(return_value=set_return or SYNC_ACCEPTED)
+    client.await_command = AsyncMock(return_value=COMMAND_ACCEPTED)
+
+    switch = RoulezElectriqueLockSwitch(coordinator, client, charger_id)
+    switch.async_write_ha_state = MagicMock()
+    return switch, coordinator
 
 
 def _make_switch(
@@ -323,3 +356,108 @@ async def test_no_switch_for_non_ocpp_charger():
     # Only one switch (for OCPP charger 1); non-OCPP charger 2 gets none
     assert len(added_entities) == 1
     assert added_entities[0]._charger_id == 1
+
+
+# ---------------------------------------------------------------------------
+# Wallbox: charge switch + lock switch created; lock switch behavior
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_wallbox_gets_charge_and_lock_switch():
+    """async_setup_entry creates a charge switch AND a lock switch for Wallbox."""
+    from custom_components.roulezelectrique.switch import async_setup_entry
+
+    from custom_components.roulezelectrique.coordinator import CoordinatorData
+
+    coordinator = MagicMock()
+    coordinator.data = CoordinatorData(
+        chargers={1: OCPP_CHARGER, 3: WALLBOX_CHARGER}, account=None
+    )
+
+    hass = MagicMock()
+    entry_id = "entry_id"
+    hass.data = {DOMAIN: {entry_id: coordinator, f"{entry_id}_client": MagicMock()}}
+    entry = MagicMock()
+    entry.entry_id = entry_id
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    # OCPP → 1 charge switch; Wallbox → 1 charge switch + 1 lock switch = 3.
+    assert len(added) == 3
+    lock_switches = [e for e in added if isinstance(e, RoulezElectriqueLockSwitch)]
+    assert len(lock_switches) == 1
+    assert lock_switches[0]._charger_id == 3
+
+
+def test_lock_switch_is_on_reflects_locked():
+    switch, _ = _make_lock_switch({**WALLBOX_CHARGER, "locked": True})
+    assert switch.is_on is True
+
+    switch2, _ = _make_lock_switch({**WALLBOX_CHARGER, "locked": False})
+    assert switch2.is_on is False
+
+
+def test_lock_switch_unavailable_when_locked_unknown():
+    """A null `locked` (never reported) → unavailable (state unknown)."""
+    switch, _ = _make_lock_switch({**WALLBOX_CHARGER, "locked": None})
+    assert switch.available is False
+
+
+def test_lock_switch_unavailable_when_not_controllable():
+    switch, _ = _make_lock_switch({**WALLBOX_CHARGER, "controllable": False})
+    assert switch.available is False
+
+
+@pytest.mark.asyncio
+async def test_lock_switch_turn_on_synchronous():
+    """turn_on (lock): synchronous Wallbox response → no poll, refresh called."""
+    switch, coordinator = _make_lock_switch(WALLBOX_CHARGER, set_return=SYNC_ACCEPTED)
+
+    await switch.async_turn_on()
+
+    switch._client.set_lock.assert_awaited_once_with(3, True)
+    switch._client.await_command.assert_not_awaited()
+    coordinator.async_request_refresh.assert_awaited_once()
+    assert switch._optimistic_locked is None
+
+
+@pytest.mark.asyncio
+async def test_lock_switch_turn_off_unlocks():
+    switch, coordinator = _make_lock_switch(
+        {**WALLBOX_CHARGER, "locked": True}, set_return=SYNC_ACCEPTED
+    )
+
+    await switch.async_turn_off()
+
+    switch._client.set_lock.assert_awaited_once_with(3, False)
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_lock_switch_offline_raises():
+    switch, _ = _make_lock_switch(WALLBOX_CHARGER, set_side_effect=OfflineError("x"))
+
+    with pytest.raises(HomeAssistantError, match="offline"):
+        await switch.async_turn_on()
+
+    assert switch._optimistic_locked is None
+
+
+@pytest.mark.asyncio
+async def test_lock_switch_rate_limited_raises():
+    switch, _ = _make_lock_switch(
+        WALLBOX_CHARGER, set_side_effect=RateLimitedError(retry_after=30)
+    )
+
+    with pytest.raises(HomeAssistantError, match="Too many requests"):
+        await switch.async_turn_on()
+
+
+@pytest.mark.asyncio
+async def test_lock_switch_lock_prevents_overlap():
+    switch, _ = _make_lock_switch(WALLBOX_CHARGER)
+    async with switch._lock:
+        with pytest.raises(HomeAssistantError, match="in progress"):
+            await switch.async_turn_on()

@@ -1,9 +1,14 @@
 """Switch platform for the Roulez Électrique (BETA) integration.
 
-A switch entity is created for every CONTROLLABLE-capable charger — OCPP
-bornes and Wallbox bornes. The server's `controllable` predicate decides
-runtime availability (OCPP: live WebSocket; Wallbox: active account). Other
-vendors (Tesla, Sigenergy, …) are never controllable and get NO switch.
+Two switch types:
+  - Charge switch: created for every CONTROLLABLE-capable charger — OCPP
+    bornes and Wallbox bornes. on = charging; toggling calls remote-start/stop.
+  - Lock switch: Wallbox ONLY — on = borne locked; toggling calls POST
+    /chargers/{id}/lock {locked}. OCPP has no lock concept (no lock switch).
+
+The server's `controllable` predicate decides runtime availability (OCPP: live
+WebSocket; Wallbox: active account). Other vendors (Tesla, Sigenergy, …) are
+never controllable and get NO switch.
 
 Switch behavior:
   - is_on: poll-confirmed `charging` value from coordinator
@@ -58,12 +63,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up switch entities from a config entry.
 
-    Only OCPP chargers get a switch. Non-OCPP chargers are silently skipped.
+    Controllable-capable chargers (OCPP or Wallbox) get a charge switch.
+    Wallbox bornes additionally get a lock switch. Other vendors are skipped.
     """
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
     client: RoulezElectriqueApiClient = hass.data[DOMAIN][f"{entry.entry_id}_client"]
 
-    entities: list[RoulezElectriqueSwitch] = []
+    entities: list[RoulezElectriqueEntity] = []
     charger_map = coordinator.data.chargers if coordinator.data else {}
     for charger_id, charger_data in charger_map.items():
         # Create a switch for any controllable-capable vendor. We gate on the
@@ -71,13 +77,17 @@ async def async_setup_entry(
         # flag so the entity exists even while temporarily uncontrollable
         # (offline OCPP / inactive account) — `available` reflects that at
         # runtime. Other vendors never expose remote control.
-        if not (charger_data.get("is_ocpp") or charger_data.get("vendor") == "wallbox"):
+        is_wallbox = charger_data.get("vendor") == "wallbox"
+        if not (charger_data.get("is_ocpp") or is_wallbox):
             _LOGGER.debug(
                 "Charger %s is not controllable-capable — no switch entity created",
                 charger_id,
             )
             continue
         entities.append(RoulezElectriqueSwitch(coordinator, client, charger_id))
+        # Lock switch is Wallbox-only (OCPP has no lock concept).
+        if is_wallbox:
+            entities.append(RoulezElectriqueLockSwitch(coordinator, client, charger_id))
 
     async_add_entities(entities)
 
@@ -265,4 +275,111 @@ class RoulezElectriqueSwitch(RoulezElectriqueEntity, SwitchEntity):
 
             # Accepted — refresh coordinator
             self._optimistic_is_on = None
+            await self.coordinator.async_request_refresh()
+
+
+class RoulezElectriqueLockSwitch(RoulezElectriqueEntity, SwitchEntity):
+    """A switch that locks/unlocks a Wallbox borne.
+
+    on = locked. Reflects the server `locked` flag (null → unknown). Toggling
+    calls POST /chargers/{id}/lock {locked} — a synchronous Wallbox cloud call.
+    A per-instance asyncio.Lock prevents overlapping lock commands.
+    """
+
+    _attr_translation_key = "lock"
+    _attr_device_class = SwitchDeviceClass.SWITCH
+
+    def __init__(
+        self,
+        coordinator: RoulezElectriqueCoordinator,
+        client: RoulezElectriqueApiClient,
+        charger_id: int,
+    ) -> None:
+        super().__init__(coordinator, charger_id)
+        self._client = client
+        self._attr_unique_id = f"{charger_id}_lock_switch"
+        self._lock = asyncio.Lock()
+        # Optimistic state overlay: None = use coordinator data.
+        self._optimistic_locked: bool | None = None
+
+    async def _resolve_command(self, result: dict[str, Any]) -> dict[str, Any]:
+        """Lock is a synchronous Wallbox call; only poll if a real id is returned."""
+        if result.get("synchronous") or result.get("id") is None:
+            return result
+        return await self._client.await_command(result["id"])
+
+    @property
+    def available(self) -> bool:
+        """Available only when the borne is controllable (active account).
+
+        Also unavailable when the server has never reported a `locked` value
+        (null) AND no optimistic overlay is set — the state would be unknown.
+        """
+        if not super().available:
+            return False
+        if not bool(self._charger_data.get("controllable")):
+            return False
+        if self._optimistic_locked is not None:
+            return True
+        return self._charger_data.get("locked") is not None
+
+    @property
+    def is_on(self) -> bool:
+        """True when the borne is locked."""
+        if self._optimistic_locked is not None:
+            return self._optimistic_locked
+        return bool(self._charger_data.get("locked"))
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Lock the borne."""
+        await self._set_locked(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Unlock the borne."""
+        await self._set_locked(False)
+
+    async def _set_locked(self, locked: bool) -> None:
+        """Send a lock/unlock command (fail-closed, single-flight)."""
+        if self._lock.locked():
+            raise HomeAssistantError(
+                "A command is already in progress for this charger"
+            )
+
+        async with self._lock:
+            self._optimistic_locked = locked
+            self.async_write_ha_state()
+
+            try:
+                result = await self._client.set_lock(self._charger_id, locked)
+                cmd = await self._resolve_command(result)
+            except OfflineError as err:
+                self._optimistic_locked = None
+                self.async_write_ha_state()
+                raise HomeAssistantError(
+                    "Charger is offline — cannot change the lock state"
+                ) from err
+            except RateLimitedError as err:
+                self._optimistic_locked = None
+                self.async_write_ha_state()
+                raise HomeAssistantError(
+                    f"Too many requests — please wait {err.retry_after}s before retrying"
+                ) from err
+            except (ConnectError, Exception) as err:  # noqa: BLE001
+                self._optimistic_locked = None
+                self.async_write_ha_state()
+                raise HomeAssistantError(
+                    f"Could not change the lock state: {err}"
+                ) from err
+
+            final_status = cmd.get("status", "")
+            if final_status != "accepted":
+                self._optimistic_locked = None
+                self.async_write_ha_state()
+                error_detail = cmd.get("error") or cmd.get("result") or final_status
+                raise HomeAssistantError(
+                    f"Lock command {final_status}: {error_detail}"
+                )
+
+            # Accepted — refresh so `locked` reflects the new state.
+            self._optimistic_locked = None
             await self.coordinator.async_request_refresh()

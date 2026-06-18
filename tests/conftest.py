@@ -27,6 +27,10 @@ OCPP_CHARGER: dict[str, Any] = {
     "current_a": 0.0,
     "voltage_v": 240.0,
     "transaction_id": None,
+    "max_amps": 32,
+    "min_amps": 6,
+    "locked": None,
+    "plugged_in": False,
     "fresh": True,
     "stale": False,
     "last_session": {
@@ -63,6 +67,10 @@ NON_OCPP_CHARGER: dict[str, Any] = {
     "current_a": None,
     "voltage_v": None,
     "transaction_id": None,
+    "max_amps": None,
+    "min_amps": None,
+    "locked": None,
+    "plugged_in": None,
     "fresh": False,
     "stale": True,
     "last_session": {
@@ -70,6 +78,33 @@ NON_OCPP_CHARGER: dict[str, Any] = {
         "energy_kwh": 20.0,
         "duration_seconds": 7200,
     },
+}
+
+# A controllable Wallbox borne: active account → controllable, with the
+# control metadata the server now returns (max/min amps, locked, plugged_in).
+WALLBOX_CHARGER: dict[str, Any] = {
+    "id": 3,
+    "name": "Wallbox Pulsar",
+    "serial_number": "WB-001",
+    "vendor": "wallbox",
+    "vendor_label": "Wallbox",
+    "is_ocpp": False,
+    "controllable": True,
+    "online": True,
+    "status": "charging",
+    "charging": True,
+    "power_kw": 7.2,
+    "energy_kwh": 4.3,
+    "current_a": 16,
+    "voltage_v": None,
+    "transaction_id": None,
+    "max_amps": 40,
+    "min_amps": 6,
+    "locked": False,
+    "plugged_in": True,
+    "fresh": True,
+    "stale": False,
+    "last_session": None,
 }
 
 ACCOUNT_DATA: dict[str, Any] = {

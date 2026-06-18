@@ -21,6 +21,8 @@ import aiohttp
 
 from .const import (
     API_COMMAND_POLL_PATH,
+    API_LOCK_PATH,
+    API_POWER_LIMIT_PATH,
     API_REMOTE_START_PATH,
     API_REMOTE_STOP_PATH,
     API_STATE_PATH,
@@ -167,6 +169,37 @@ class RoulezElectriqueApiClient:
         """
         path = API_REMOTE_STOP_PATH.format(charger_id=charger_id)
         return await self._request("POST", path, json={"transaction_id": transaction_id})
+
+    async def set_power_limit(
+        self,
+        charger_id: int,
+        amps: int,
+    ) -> dict[str, Any]:
+        """POST /api/v1/chargers/{id}/power-limit → {id, status, synchronous?}.
+
+        Sets the max charging current (amps). For Wallbox this is a SYNCHRONOUS
+        cloud call ({id: null, synchronous: true}); for OCPP it returns a
+        command id to poll. The server validates 6 ≤ amps ≤ maxControlAmps and
+        returns 422 for an out-of-range value (surfaced as RoulezElectriqueError).
+
+        Raises OfflineError (409), ForbiddenError (403), RateLimitedError (429).
+        """
+        path = API_POWER_LIMIT_PATH.format(charger_id=charger_id)
+        return await self._request("POST", path, json={"amps": amps})
+
+    async def set_lock(
+        self,
+        charger_id: int,
+        locked: bool,
+    ) -> dict[str, Any]:
+        """POST /api/v1/chargers/{id}/lock → {id, status, synchronous?}.
+
+        Locks (locked=True) or unlocks (locked=False) the borne. Wallbox-only;
+        a SYNCHRONOUS cloud call. Raises OfflineError (409), ForbiddenError
+        (403), RateLimitedError (429).
+        """
+        path = API_LOCK_PATH.format(charger_id=charger_id)
+        return await self._request("POST", path, json={"locked": locked})
 
     async def get_command(self, command_id: int | str) -> dict[str, Any]:
         """GET /api/v1/commands/{id} → {id, status, result, error}.

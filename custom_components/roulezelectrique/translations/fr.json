@@ -111,6 +111,14 @@
     "switch": {
       "charge": {
         "name": "Démarrer la charge"
+      },
+      "lock": {
+        "name": "Verrouiller"
+      }
+    },
+    "number": {
+      "max_current": {
+        "name": "Courant de charge max"
       }
     }
   }

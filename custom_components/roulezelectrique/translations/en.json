@@ -111,6 +111,14 @@
     "switch": {
       "charge": {
         "name": "Start charging"
+      },
+      "lock": {
+        "name": "Lock"
+      }
+    },
+    "number": {
+      "max_current": {
+        "name": "Max charging current"
       }
     }
   }

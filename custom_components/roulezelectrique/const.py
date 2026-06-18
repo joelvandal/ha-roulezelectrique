@@ -18,7 +18,15 @@ MAX_SCAN_INTERVAL = 900
 API_STATE_PATH = "/api/v1/home-assistant/state"
 API_REMOTE_START_PATH = "/api/v1/chargers/{charger_id}/remote-start"
 API_REMOTE_STOP_PATH = "/api/v1/chargers/{charger_id}/remote-stop"
+API_POWER_LIMIT_PATH = "/api/v1/chargers/{charger_id}/power-limit"
+API_LOCK_PATH = "/api/v1/chargers/{charger_id}/lock"
 API_COMMAND_POLL_PATH = "/api/v1/commands/{command_id}"
+
+# Default current bounds for the power-limit number entity, used when the
+# server omits them (older server / read failure). The server validates
+# min:6 / max:maxControlAmps, so 6 is the hard floor everywhere.
+DEFAULT_MIN_AMPS = 6
+DEFAULT_MAX_AMPS = 32
 
 # Command polling
 COMMAND_POLL_INTERVAL = 2  # seconds between polls
@@ -31,4 +39,4 @@ COMMAND_TERMINAL_STATUSES = {"accepted", "rejected", "timeout", "failed"}
 COORDINATOR_CHARGERS_KEY = "chargers"
 
 # Platforms
-PLATFORMS = ["binary_sensor", "sensor", "switch"]
+PLATFORMS = ["binary_sensor", "number", "sensor", "switch"]
