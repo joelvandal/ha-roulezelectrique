@@ -49,9 +49,11 @@ def _make_switch(
     async_write_ha_state is patched to a no-op because the entity has no
     `hass` assigned in pure-unit tests (the HA runtime normally sets it).
     """
+    from custom_components.roulezelectrique.coordinator import CoordinatorData
+
     charger_id = charger_data["id"]
     coordinator = MagicMock()
-    coordinator.data = {charger_id: charger_data}
+    coordinator.data = CoordinatorData(chargers={charger_id: charger_data}, account=None)
     coordinator.last_update_success = True
     coordinator._listeners = {}
     coordinator.async_request_refresh = AsyncMock()
@@ -289,11 +291,13 @@ async def test_no_switch_for_non_ocpp_charger():
     """async_setup_entry must NOT create a switch for non-OCPP chargers."""
     from custom_components.roulezelectrique.switch import async_setup_entry
 
+    from custom_components.roulezelectrique.coordinator import CoordinatorData
+
     coordinator = MagicMock()
-    coordinator.data = {
-        1: OCPP_CHARGER,
-        2: NON_OCPP_CHARGER,
-    }
+    coordinator.data = CoordinatorData(
+        chargers={1: OCPP_CHARGER, 2: NON_OCPP_CHARGER},
+        account=None,
+    )
 
     hass = MagicMock()
     entry_id = "entry_id"

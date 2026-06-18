@@ -68,6 +68,36 @@
       },
       "last_seen": {
         "name": "Dernière session"
+      },
+      "account_rewards_total": {
+        "name": "Récompenses totales"
+      },
+      "account_rewards_client": {
+        "name": "Récompenses client"
+      },
+      "account_rewards_installer": {
+        "name": "Récompenses ambassadeur"
+      },
+      "account_rewards_referee": {
+        "name": "Prime filleul"
+      },
+      "account_rewards_referrer": {
+        "name": "Prime parrain"
+      },
+      "account_invitations_pending": {
+        "name": "Invitations en attente"
+      },
+      "account_invitations_accepted": {
+        "name": "Invitations acceptées"
+      },
+      "account_invitations_referred": {
+        "name": "Filleuls inscrits"
+      },
+      "account_energy_kwh_lifetime": {
+        "name": "Énergie totale à vie"
+      },
+      "account_charger_count": {
+        "name": "Nombre de bornes"
       }
     },
     "binary_sensor": {

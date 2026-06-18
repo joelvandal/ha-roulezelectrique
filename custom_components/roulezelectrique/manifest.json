@@ -1,7 +1,7 @@
 {
   "domain": "roulezelectrique",
   "name": "Roulez Électrique (BETA)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "documentation": "https://github.com/joelvandal/roulezelectrique-ha",
   "issue_tracker": "https://github.com/joelvandal/roulezelectrique-ha/issues",
   "codeowners": ["@joelvandal"],

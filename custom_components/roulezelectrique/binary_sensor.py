@@ -63,7 +63,8 @@ async def async_setup_entry(
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities: list[RoulezElectriqueBinarySensor] = []
-    for charger_id, charger_data in (coordinator.data or {}).items():
+    charger_map = coordinator.data.chargers if coordinator.data else {}
+    for charger_id, charger_data in charger_map.items():
         is_ocpp = bool(charger_data.get("is_ocpp"))
         for description in BINARY_SENSOR_DESCRIPTIONS:
             if description.ocpp_only and not is_ocpp:

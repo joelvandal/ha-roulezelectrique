@@ -1,19 +1,24 @@
 """DataUpdateCoordinator for the Roulez Électrique (BETA) integration.
 
 One GET /api/v1/home-assistant/state call per refresh interval. The result is
-stored as a dict keyed by charger id (int) for O(1) lookup by entity platforms.
+stored as a CoordinatorData object holding:
+  - chargers: dict keyed by charger id (int) for O(1) lookup by entity platforms
+  - account: dict with rewards, invitations, energy_kwh_lifetime, charger_count
+             (or None when the server does not return the account block — older
+             server versions — so the component degrades gracefully: no account
+             sensors are created, no crash)
 
 Error handling (fail-closed policy):
     401 AuthError         → ConfigEntryAuthFailed  (triggers reauth flow)
     429 RateLimitedError  → UpdateFailed + delay next poll via Retry-After
     5xx / ConnectError    → UpdateFailed (entities go unavailable, HA retries)
-    Empty roster          → empty dict {} (no entities, no error)
+    Empty roster          → empty chargers dict {} (no charger entities, no error)
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any
 
@@ -28,10 +33,23 @@ from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-class RoulezElectriqueCoordinator(DataUpdateCoordinator[dict[int, dict[str, Any]]]):
+@dataclass
+class CoordinatorData:
+    """Typed container for the coordinator's parsed state payload."""
+
+    # Per-charger data keyed by charger id (int).
+    chargers: dict[int, dict[str, Any]] = field(default_factory=dict)
+
+    # Account-level block from /state → "account" key. None when the server
+    # does not return it (older version) so consumers must tolerate None.
+    account: dict[str, Any] | None = None
+
+
+class RoulezElectriqueCoordinator(DataUpdateCoordinator[CoordinatorData]):
     """Coordinator that polls the Roulez Électrique state endpoint.
 
-    Data shape: { charger_id (int): { ...charger dict... }, ... }
+    Data shape: CoordinatorData with .chargers (dict[int, dict]) and
+    .account (dict | None).
     """
 
     def __init__(
@@ -53,8 +71,8 @@ class RoulezElectriqueCoordinator(DataUpdateCoordinator[dict[int, dict[str, Any]
         self.client = client
         self._entry = entry
 
-    async def _async_update_data(self) -> dict[int, dict[str, Any]]:
-        """Fetch and return charger state keyed by charger id.
+    async def _async_update_data(self) -> CoordinatorData:
+        """Fetch and return coordinator data.
 
         Called automatically by HA at each update_interval. Exceptions:
           - ConfigEntryAuthFailed → HA stops polling and shows reauth UI
@@ -84,7 +102,9 @@ class RoulezElectriqueCoordinator(DataUpdateCoordinator[dict[int, dict[str, Any]
         self.update_interval = timedelta(seconds=scan_interval)
 
         chargers: list[dict[str, Any]] = envelope.get("chargers", [])
-        if not chargers:
-            return {}
+        charger_map = {int(c["id"]): c for c in chargers}
 
-        return {int(c["id"]): c for c in chargers}
+        # account block is optional — tolerate older servers that omit it.
+        account: dict[str, Any] | None = envelope.get("account") or None
+
+        return CoordinatorData(chargers=charger_map, account=account)

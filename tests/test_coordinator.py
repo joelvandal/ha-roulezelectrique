@@ -58,34 +58,35 @@ def _make_coordinator(state_return=None, state_side_effect=None):
 
 @pytest.mark.asyncio
 async def test_coordinator_parse_state_single_ocpp():
-    """State with one OCPP charger → dict keyed by charger id."""
+    """State with one OCPP charger → CoordinatorData.chargers keyed by charger id."""
     from custom_components.roulezelectrique.coordinator import RoulezElectriqueCoordinator
 
     coordinator = _make_coordinator(state_return=STATE_ENVELOPE)
     result = await coordinator._async_update_data()
 
-    assert 1 in result
-    assert result[1]["name"] == "Borne OCPP"
-    assert result[1]["is_ocpp"] is True
+    assert 1 in result.chargers
+    assert result.chargers[1]["name"] == "Borne OCPP"
+    assert result.chargers[1]["is_ocpp"] is True
 
 
 @pytest.mark.asyncio
 async def test_coordinator_parse_state_multi():
-    """State with multiple chargers → all keyed by id."""
+    """State with multiple chargers → all keyed by id in .chargers."""
     coordinator = _make_coordinator(state_return=STATE_ENVELOPE_MULTI)
     result = await coordinator._async_update_data()
 
-    assert set(result.keys()) == {1, 2}
-    assert result[2]["vendor"] == "tesla"
+    assert set(result.chargers.keys()) == {1, 2}
+    assert result.chargers[2]["vendor"] == "tesla"
 
 
 @pytest.mark.asyncio
 async def test_coordinator_empty_roster():
-    """Empty charger list → empty dict (not an error)."""
+    """Empty charger list → empty .chargers dict (not an error)."""
     coordinator = _make_coordinator(state_return=STATE_ENVELOPE_EMPTY)
     result = await coordinator._async_update_data()
 
-    assert result == {}
+    assert result.chargers == {}
+    assert result.account is None
 
 
 # ---------------------------------------------------------------------------

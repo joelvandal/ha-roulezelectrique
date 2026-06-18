@@ -72,22 +72,50 @@ NON_OCPP_CHARGER: dict[str, Any] = {
     },
 }
 
+ACCOUNT_DATA: dict[str, Any] = {
+    "rewards": {
+        "client": 12.50,
+        "installer": 5.00,
+        "referee": 1.25,
+        "referrer": 0.75,
+        "total": 19.50,
+        "currency": "CAD",
+    },
+    "invitations": {
+        "pending": 2,
+        "accepted": 3,
+        "referred": 4,
+    },
+    "energy_kwh_lifetime": 1234.567,
+    "charger_count": 2,
+}
+
 STATE_ENVELOPE: dict[str, Any] = {
     "generated_at": "2026-06-17T10:00:00+00:00",
     "poll_interval_seconds": 30,
     "chargers": [OCPP_CHARGER],
+    "account": ACCOUNT_DATA,
 }
 
 STATE_ENVELOPE_MULTI: dict[str, Any] = {
     "generated_at": "2026-06-17T10:00:00+00:00",
     "poll_interval_seconds": 30,
     "chargers": [OCPP_CHARGER, NON_OCPP_CHARGER],
+    "account": ACCOUNT_DATA,
 }
 
 STATE_ENVELOPE_EMPTY: dict[str, Any] = {
     "generated_at": "2026-06-17T10:00:00+00:00",
     "poll_interval_seconds": 30,
     "chargers": [],
+    "account": None,
+}
+
+# Envelope from an older server that doesn't include the account block.
+STATE_ENVELOPE_NO_ACCOUNT: dict[str, Any] = {
+    "generated_at": "2026-06-17T10:00:00+00:00",
+    "poll_interval_seconds": 30,
+    "chargers": [OCPP_CHARGER],
 }
 
 COMMAND_QUEUED: dict[str, Any] = {"id": 99, "status": "queued", "result": None, "error": None}

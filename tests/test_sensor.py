@@ -19,8 +19,10 @@ from .conftest import NON_OCPP_CHARGER, OCPP_CHARGER, OCPP_CHARGER_CHARGING
 
 def _make_coordinator(charger_data: dict[int, dict[str, Any]]):
     """Create a minimal coordinator mock with given charger map."""
+    from custom_components.roulezelectrique.coordinator import CoordinatorData
+
     coordinator = MagicMock()
-    coordinator.data = charger_data
+    coordinator.data = CoordinatorData(chargers=charger_data, account=None)
     # Satisfy CoordinatorEntity.available (needs last_update_success)
     coordinator.last_update_success = True
     coordinator._listeners = {}

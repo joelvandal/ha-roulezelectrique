@@ -68,6 +68,36 @@
       },
       "last_seen": {
         "name": "Last session"
+      },
+      "account_rewards_total": {
+        "name": "Total rewards"
+      },
+      "account_rewards_client": {
+        "name": "Client rewards"
+      },
+      "account_rewards_installer": {
+        "name": "Ambassador rewards"
+      },
+      "account_rewards_referee": {
+        "name": "Referee bonus"
+      },
+      "account_rewards_referrer": {
+        "name": "Referrer bonus"
+      },
+      "account_invitations_pending": {
+        "name": "Pending invitations"
+      },
+      "account_invitations_accepted": {
+        "name": "Accepted invitations"
+      },
+      "account_invitations_referred": {
+        "name": "Referred members"
+      },
+      "account_energy_kwh_lifetime": {
+        "name": "Lifetime energy"
+      },
+      "account_charger_count": {
+        "name": "Charger count"
       }
     },
     "binary_sensor": {

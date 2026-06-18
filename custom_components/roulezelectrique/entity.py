@@ -53,7 +53,7 @@ class RoulezElectriqueEntity(CoordinatorEntity[RoulezElectriqueCoordinator]):
         """
         if self.coordinator.data is None:
             return {}
-        return self.coordinator.data.get(self._charger_id, {})
+        return self.coordinator.data.chargers.get(self._charger_id, {})
 
     @property
     def available(self) -> bool:

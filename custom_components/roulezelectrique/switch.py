@@ -1,14 +1,23 @@
 """Switch platform for the Roulez Électrique (BETA) integration.
 
-A switch entity is created ONLY for OCPP chargers that are controllable.
-Non-OCPP chargers (Tesla, Wallbox, etc.) get NO switch entity — the platform
-API returns 403 for remote-start/stop on non-OCPP chargers.
+A switch entity is created for every CONTROLLABLE-capable charger — OCPP
+bornes and Wallbox bornes. The server's `controllable` predicate decides
+runtime availability (OCPP: live WebSocket; Wallbox: active account). Other
+vendors (Tesla, Sigenergy, …) are never controllable and get NO switch.
 
 Switch behavior:
   - is_on: poll-confirmed `charging` value from coordinator
-  - available: requires charger `online` (pre-emptive check; avoids 409)
-  - turn_on: POST remote-start → await_command → accepted → coordinator refresh
-  - turn_off: POST remote-stop (needs transaction_id from coordinator data)
+  - available: requires server `controllable` (pre-emptive check; avoids 409)
+  - turn_on: POST remote-start → (OCPP) await_command, (Wallbox) synchronous
+  - turn_off: POST remote-stop → (OCPP) await_command, (Wallbox) synchronous
+
+OCPP vs Wallbox control flow:
+  - OCPP returns {id, status} and the command runs async on the borne — we
+    poll GET /commands/{id} via await_command until a terminal status.
+  - Wallbox returns {id: null, status: "accepted", synchronous: true} — the
+    cloud call already completed (or fail-closed errored). We MUST NOT poll a
+    null id: when `synchronous` is true (or id is null) we skip await_command
+    and refresh the coordinator immediately.
 
 Error handling (fail-closed):
   - rejected/timeout/failed → revert optimistic state + raise HomeAssistantError
@@ -17,8 +26,9 @@ Error handling (fail-closed):
   - Per-switch asyncio.Lock: prevents two overlapping commands on the same switch
 
 Note: `transaction_id` is populated in coordinator data only while a charge
-session is active on an OCPP charger. turn_off raises HomeAssistantError if
-no transaction_id is present (safe: can't stop what isn't started).
+session is active on an OCPP charger. For OCPP, turn_off raises
+HomeAssistantError if no transaction_id is present (safe: can't stop what
+isn't started). Wallbox pause IS the stop and needs no transaction_id.
 """
 
 from __future__ import annotations
@@ -54,10 +64,17 @@ async def async_setup_entry(
     client: RoulezElectriqueApiClient = hass.data[DOMAIN][f"{entry.entry_id}_client"]
 
     entities: list[RoulezElectriqueSwitch] = []
-    for charger_id, charger_data in (coordinator.data or {}).items():
-        if not charger_data.get("is_ocpp"):
+    charger_map = coordinator.data.chargers if coordinator.data else {}
+    for charger_id, charger_data in charger_map.items():
+        # Create a switch for any controllable-capable vendor. We gate on the
+        # stable vendor (OCPP or Wallbox) rather than the live `controllable`
+        # flag so the entity exists even while temporarily uncontrollable
+        # (offline OCPP / inactive account) — `available` reflects that at
+        # runtime. Other vendors never expose remote control.
+        if not (charger_data.get("is_ocpp") or charger_data.get("vendor") == "wallbox"):
             _LOGGER.debug(
-                "Charger %s is not OCPP — no switch entity created", charger_id
+                "Charger %s is not controllable-capable — no switch entity created",
+                charger_id,
             )
             continue
         entities.append(RoulezElectriqueSwitch(coordinator, client, charger_id))
@@ -87,6 +104,19 @@ class RoulezElectriqueSwitch(RoulezElectriqueEntity, SwitchEntity):
         self._lock = asyncio.Lock()
         # Optimistic state overlay: None = use coordinator data
         self._optimistic_is_on: bool | None = None
+
+    async def _resolve_command(self, result: dict[str, Any]) -> dict[str, Any]:
+        """Turn a remote-start/stop response into a terminal command dict.
+
+        OCPP returns {id, status} with an async command to poll. Wallbox
+        returns {id: null, status: "accepted", synchronous: true} — the cloud
+        call already completed, so we MUST NOT poll a null id. When the
+        response is synchronous (or carries no id), return it as-is; otherwise
+        poll GET /commands/{id} until terminal.
+        """
+        if result.get("synchronous") or result.get("id") is None:
+            return result
+        return await self._client.await_command(result["id"])
 
     @property
     def available(self) -> bool:
@@ -133,8 +163,7 @@ class RoulezElectriqueSwitch(RoulezElectriqueEntity, SwitchEntity):
 
             try:
                 result = await self._client.remote_start(self._charger_id)
-                command_id = result["id"]
-                cmd = await self._client.await_command(command_id)
+                cmd = await self._resolve_command(result)
             except OfflineError as err:
                 self._optimistic_is_on = None
                 self.async_write_ha_state()
@@ -183,8 +212,12 @@ class RoulezElectriqueSwitch(RoulezElectriqueEntity, SwitchEntity):
                 "A command is already in progress for this charger"
             )
 
+        # OCPP needs the active transaction id to stop a specific session.
+        # Wallbox pause IS the stop and ignores transaction_id, so don't gate
+        # the Wallbox stop on a transaction id it never reports.
+        is_ocpp = bool(self._charger_data.get("is_ocpp"))
         transaction_id = self._charger_data.get("transaction_id")
-        if not transaction_id:
+        if is_ocpp and not transaction_id:
             raise HomeAssistantError(
                 "No active transaction — cannot stop charge session "
                 "(no transaction_id reported by charger)"
@@ -196,9 +229,13 @@ class RoulezElectriqueSwitch(RoulezElectriqueEntity, SwitchEntity):
             self.async_write_ha_state()
 
             try:
-                result = await self._client.remote_stop(self._charger_id, transaction_id)
-                command_id = result["id"]
-                cmd = await self._client.await_command(command_id)
+                # transaction_id is required by the API client signature but is
+                # ignored server-side for Wallbox (pause = stop). Pass 0 when we
+                # have no OCPP transaction (Wallbox path).
+                result = await self._client.remote_stop(
+                    self._charger_id, transaction_id or 0
+                )
+                cmd = await self._resolve_command(result)
             except OfflineError as err:
                 self._optimistic_is_on = None
                 self.async_write_ha_state()
