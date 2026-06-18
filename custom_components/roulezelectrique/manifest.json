@@ -1,12 +1,12 @@
 {
   "domain": "roulezelectrique",
   "name": "Roulez Électrique (BETA)",
-  "version": "0.2.0",
-  "documentation": "https://github.com/joelvandal/roulezelectrique-ha",
-  "issue_tracker": "https://github.com/joelvandal/roulezelectrique-ha/issues",
   "codeowners": ["@joelvandal"],
-  "iot_class": "cloud_polling",
   "config_flow": true,
+  "documentation": "https://github.com/joelvandal/ha-roulezelectrique",
   "integration_type": "hub",
-  "requirements": []
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/joelvandal/ha-roulezelectrique/issues",
+  "requirements": [],
+  "version": "0.2.0"
 }

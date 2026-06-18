@@ -43,18 +43,25 @@ from .entity import RoulezElectriqueEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-# Known OCPP/charger status values reported by the platform
-VALID_STATUSES = [
-    "Available",
-    "Preparing",
-    "Charging",
-    "SuspendedEVSE",
-    "SuspendedEV",
-    "Finishing",
-    "Reserved",
-    "Unavailable",
-    "Faulted",
-]
+# Raw OCPP/charger status string (as reported by the platform) → HA enum slug.
+# For an HA ENUM sensor the emitted state MUST equal a translation key, and
+# translation state keys must match [a-z0-9-_]+ — so we slugify both here and
+# in the translation files. Lookup is case-tolerant (keyed on the lowercased
+# raw value).
+STATUS_SLUGS = {
+    "available": "available",
+    "preparing": "preparing",
+    "charging": "charging",
+    "suspendedevse": "suspended_evse",
+    "suspendedev": "suspended_ev",
+    "finishing": "finishing",
+    "reserved": "reserved",
+    "unavailable": "unavailable",
+    "faulted": "faulted",
+}
+
+# Enum options the status sensor can report — exactly the set of slug values.
+VALID_STATUSES = list(STATUS_SLUGS.values())
 
 
 @dataclass(frozen=True)
@@ -85,7 +92,13 @@ def _voltage(c: dict) -> float | None:
 
 
 def _status(c: dict) -> str | None:
-    return c.get("status")
+    # Map the raw OCPP status string to its enum slug (case-tolerant). The
+    # emitted slug must be one of VALID_STATUSES so the ENUM sensor stays valid;
+    # unknown/None values report as unknown (None).
+    raw = c.get("status")
+    if not raw:
+        return None
+    return STATUS_SLUGS.get(str(raw).lower())
 
 
 def _last_seen(c: dict) -> datetime | None:

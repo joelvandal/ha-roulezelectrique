@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Roulez Électrique — Connect (BETA / EXPERIMENTAL)",
-        "description": "**BETA / EXPERIMENTAL** — This integration is under active development and may change. To get your access token, sign in at [roulezelectrique.club](https://roulezelectrique.club), then go to **Profile → Integrations → Home Assistant** and click \"Activate\".",
+        "description": "**BETA / EXPERIMENTAL** — This integration is under active development and may change. To get your access token, open your Roulez Électrique account, then go to **Profile → Integrations → Home Assistant** and click Activate.",
         "data": {
           "base_url": "Base URL",
           "api_token": "API Token"
@@ -49,15 +49,15 @@
       "status": {
         "name": "Status",
         "state": {
-          "Available": "Available",
-          "Preparing": "Preparing",
-          "Charging": "Charging",
-          "SuspendedEVSE": "Suspended (EVSE)",
-          "SuspendedEV": "Suspended (EV)",
-          "Finishing": "Finishing",
-          "Reserved": "Reserved",
-          "Unavailable": "Unavailable",
-          "Faulted": "Faulted"
+          "available": "Available",
+          "preparing": "Preparing",
+          "charging": "Charging",
+          "suspended_evse": "Suspended (EVSE)",
+          "suspended_ev": "Suspended (EV)",
+          "finishing": "Finishing",
+          "reserved": "Reserved",
+          "unavailable": "Unavailable",
+          "faulted": "Faulted"
         }
       },
       "current": {

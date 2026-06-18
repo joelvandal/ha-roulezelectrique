@@ -94,7 +94,11 @@ def test_status_sensor_metadata():
 
     sensor = _make_sensor(OCPP_CHARGER, "status")
     assert sensor.device_class == SensorDeviceClass.ENUM
-    assert sensor.native_value == "Available"
+    # ENUM sensors must emit one of the declared option slugs; the raw OCPP
+    # "Available" status maps to the "available" slug (matches the translation
+    # key, which Hassfest requires to be a lowercase slug).
+    assert sensor.native_value == "available"
+    assert sensor.native_value in sensor.options
 
 
 def test_last_seen_sensor():
