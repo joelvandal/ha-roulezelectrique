@@ -30,10 +30,11 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class RoulezElectriqueBinarySensorDescription(BinarySensorEntityDescription):
-    """Description with value_fn and optional ocpp_only constraint."""
+    """Description with value_fn and optional vendor constraint."""
 
     value_fn: Any = field(default=None)
     ocpp_only: bool = False
+    wallbox_only: bool = False
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueBinarySensorDescription, ...] = (
@@ -42,7 +43,12 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueBinarySensorDescription, ...] 
         translation_key="online",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         value_fn=lambda c: bool(c.get("online")),
-        ocpp_only=True,  # Only OCPP chargers have real-time connectivity
+        # OCPP and Sigenergy AC both report real-time connectivity. Wallbox also
+        # reports online (status-driven from the cloud snapshot). The ocpp_only
+        # flag is kept False so all vendors that expose `online` benefit from
+        # this sensor — the server only populates `online` with a meaningful
+        # value for vendors that have it.
+        ocpp_only=False,
     ),
     RoulezElectriqueBinarySensorDescription(
         key="charging",
@@ -50,6 +56,15 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueBinarySensorDescription, ...] 
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
         value_fn=lambda c: bool(c.get("charging")),
         ocpp_only=False,
+    ),
+    RoulezElectriqueBinarySensorDescription(
+        key="plugged_in",
+        translation_key="plugged_in",
+        device_class=BinarySensorDeviceClass.PLUG,
+        # plugged_in is Wallbox-only: the server only populates this field for
+        # Wallbox bornes. The entity is skipped for all other vendors.
+        value_fn=lambda c: bool(c.get("plugged_in")) if c.get("plugged_in") is not None else None,
+        wallbox_only=True,
     ),
 )
 
@@ -66,9 +81,12 @@ async def async_setup_entry(
     charger_map = coordinator.data.chargers if coordinator.data else {}
     for charger_id, charger_data in charger_map.items():
         is_ocpp = bool(charger_data.get("is_ocpp"))
+        is_wallbox = charger_data.get("vendor") == "wallbox"
         for description in BINARY_SENSOR_DESCRIPTIONS:
             if description.ocpp_only and not is_ocpp:
                 continue  # Skip OCPP-only sensors for non-OCPP chargers
+            if description.wallbox_only and not is_wallbox:
+                continue  # Skip Wallbox-only sensors for other vendors
             entities.append(
                 RoulezElectriqueBinarySensor(coordinator, charger_id, description)
             )

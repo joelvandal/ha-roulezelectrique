@@ -105,6 +105,9 @@
       },
       "charging": {
         "name": "Charging"
+      },
+      "plugged_in": {
+        "name": "Cable plugged in"
       }
     },
     "switch": {

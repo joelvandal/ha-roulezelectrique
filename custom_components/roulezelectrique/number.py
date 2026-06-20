@@ -1,21 +1,28 @@
 """Number platform for the Roulez Électrique (BETA) integration.
 
-Exposes the max charging current (amps) as a slider for CONTROLLABLE-capable
-bornes — OCPP bornes (smart-charging power limit) and Wallbox bornes (setAmps).
-Other vendors (Tesla, Sigenergy, …) are never controllable and get NO number.
+Exposes the max charging current (amps) as a slider for bornes that support
+current-limit control:
+  - OCPP bornes (smart-charging SetChargingProfile)
+  - Wallbox bornes (setAmps cloud call — synchronous)
+  - Sigenergy AC bornes (setAcCurrent cloud call — synchronous)
+
+Other vendors (Tesla, Sigenergy DC, …) are never current-limit controllable
+and get NO number entity.
 
 Entity behavior:
   - native_min/max_value: from the charger's `min_amps`/`max_amps` (server-
     authoritative — = the power-limit endpoint's validated 6..maxControlAmps
     range). Falls back to DEFAULT_MIN_AMPS/DEFAULT_MAX_AMPS when the server
-    omits them (older server / a fail-soft Wallbox read).
+    omits them (older server / a fail-soft vendor read).
   - native_value: the current setting (`current_a`) when reported, else the max
     (so the slider shows a sensible position rather than empty).
-  - available: gated on the server `controllable` flag (pre-emptive 409 guard),
-    mirroring the charge switch.
+  - available: gated on the server `current_limit_controllable` flag (pre-emptive
+    409 guard). For Sigenergy AC this is true when the account is active (not
+    gated on a live WebSocket — the cloud API is always reachable when the
+    account is active).
   - set: POST /chargers/{id}/power-limit {amps}. OCPP returns a command id to
-    poll (await_command); Wallbox returns a synchronous result we DON'T poll
-    (the _resolve_command helper, same as the switch).
+    poll (await_command); Wallbox and Sigenergy AC return a synchronous result
+    ({id:null, synchronous:true}) that MUST NOT be polled.
 
 Error handling (fail-closed): rejected/timeout/failed, 409 offline, 429 rate
 limited → raise HomeAssistantError; a per-entity asyncio.Lock prevents two
@@ -60,9 +67,19 @@ async def async_setup_entry(
     entities: list[RoulezElectriqueMaxCurrentNumber] = []
     charger_map = coordinator.data.chargers if coordinator.data else {}
     for charger_id, charger_data in charger_map.items():
-        if not (charger_data.get("is_ocpp") or charger_data.get("vendor") == "wallbox"):
+        # Gate on the stable `current_limit_controllable` flag from the server:
+        # true for OCPP (online), Wallbox (active account), and Sigenergy AC
+        # (active account). Older servers without this field fall back to the
+        # legacy is_ocpp/vendor check so the entity still appears on upgrade.
+        is_limit_controllable = charger_data.get("current_limit_controllable")
+        if is_limit_controllable is None:
+            # Older server: fall back to legacy gate (OCPP or Wallbox).
+            is_limit_controllable = (
+                charger_data.get("is_ocpp") or charger_data.get("vendor") == "wallbox"
+            )
+        if not is_limit_controllable:
             _LOGGER.debug(
-                "Charger %s is not controllable-capable — no max-current number entity",
+                "Charger %s does not support current-limit control — no max-current number entity",
                 charger_id,
             )
             continue
@@ -122,9 +139,19 @@ class RoulezElectriqueMaxCurrentNumber(RoulezElectriqueEntity, NumberEntity):
 
     @property
     def available(self) -> bool:
-        """Available only when the charger is controllable (pre-emptive 409 guard)."""
+        """Available only when current-limit control is active (pre-emptive 409 guard).
+
+        Uses `current_limit_controllable` (true for OCPP online, Wallbox active
+        account, Sigenergy AC active account). Falls back to `controllable` for
+        older server versions that do not yet expose the separate flag.
+        """
         if not super().available:
             return False
+        clc = self._charger_data.get("current_limit_controllable")
+        if clc is not None:
+            return bool(clc)
+        # Older server fallback: use `controllable` (gated the same way before
+        # Sigenergy AC support was added — avoids a regression on upgrade).
         return bool(self._charger_data.get("controllable"))
 
     @property

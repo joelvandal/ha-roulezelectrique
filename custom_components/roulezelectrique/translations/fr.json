@@ -105,6 +105,9 @@
       },
       "charging": {
         "name": "En charge"
+      },
+      "plugged_in": {
+        "name": "Câble branché"
       }
     },
     "switch": {
