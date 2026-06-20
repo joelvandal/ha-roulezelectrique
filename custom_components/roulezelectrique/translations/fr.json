@@ -3,9 +3,8 @@
     "step": {
       "user": {
         "title": "Roulez Électrique — Connexion (BÊTA / EXPÉRIMENTAL)",
-        "description": "**BÊTA / EXPÉRIMENTAL** — Cette intégration est en développement actif et peut changer. Pour obtenir votre jeton d'accès, ouvrez votre compte Roulez Électrique, puis allez dans **Profil → Intégrations → Home Assistant** et cliquez sur Activer.",
+        "description": "**BÊTA / EXPÉRIMENTAL** — Cette intégration est en développement actif et peut changer.\n\nPour obtenir votre jeton d'accès, connectez-vous sur **{base_url}**, puis allez dans **Profil → Intégrations → Home Assistant** et cliquez sur Activer. Copiez le jeton affiché et collez-le ci-dessous.",
         "data": {
-          "base_url": "URL de base",
           "api_token": "Jeton API"
         }
       },
@@ -19,7 +18,7 @@
     },
     "error": {
       "invalid_auth": "Jeton API invalide ou révoqué. Vérifiez le jeton dans votre profil.",
-      "cannot_connect": "Impossible de se connecter au serveur. Vérifiez l'URL de base et votre connexion Internet.",
+      "cannot_connect": "Impossible de joindre le serveur Roulez Électrique. Vérifiez votre connexion Internet.",
       "invalid_scan_interval": "L'intervalle de mise à jour doit être entre 30 et 900 secondes.",
       "unknown": "Erreur inattendue. Consultez les journaux pour plus de détails."
     },

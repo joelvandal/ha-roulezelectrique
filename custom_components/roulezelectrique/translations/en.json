@@ -3,9 +3,8 @@
     "step": {
       "user": {
         "title": "Roulez Électrique — Connect (BETA / EXPERIMENTAL)",
-        "description": "**BETA / EXPERIMENTAL** — This integration is under active development and may change. To get your access token, open your Roulez Électrique account, then go to **Profile → Integrations → Home Assistant** and click Activate.",
+        "description": "**BETA / EXPERIMENTAL** — This integration is under active development and may change.\n\nTo get your access token, sign in at **{base_url}**, then go to **Profile → Integrations → Home Assistant** and click Activate. Copy the token shown and paste it below.",
         "data": {
-          "base_url": "Base URL",
           "api_token": "API Token"
         }
       },
@@ -19,7 +18,7 @@
     },
     "error": {
       "invalid_auth": "Invalid or revoked API token. Please check the token in your profile.",
-      "cannot_connect": "Cannot connect to the server. Check the base URL and your internet connection.",
+      "cannot_connect": "Cannot reach the Roulez Électrique server. Check your internet connection.",
       "invalid_scan_interval": "The update interval must be between 30 and 900 seconds.",
       "unknown": "Unexpected error. Check the logs for details."
     },

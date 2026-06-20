@@ -125,6 +125,13 @@ class RoulezElectriqueApiClient:
                 raise RoulezElectriqueError(f"Unexpected HTTP {resp.status}: {body[:200]}")
         except (aiohttp.ClientConnectionError, aiohttp.ServerTimeoutError, asyncio.TimeoutError) as err:
             raise ConnectError(f"Network error contacting {url}: {err}") from err
+        except aiohttp.ContentTypeError as err:
+            # resp.json() raised because the response body was not JSON —
+            # most commonly a Cloudflare HTML error page (wrong base URL,
+            # 5xx from the edge) or a non-HTTPS redirect that returned HTML.
+            # Surface as ConnectError so the config flow shows "cannot_connect"
+            # rather than the opaque "unknown" error.
+            raise ConnectError(f"Server returned non-JSON response from {url}: {err}") from err
         except (AuthError, ForbiddenError, OfflineError, RateLimitedError, ConnectError, RoulezElectriqueError):
             raise
 

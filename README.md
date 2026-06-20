@@ -39,7 +39,7 @@ Non-OCPP chargers (Tesla, Wallbox, etc.) appear **read-only** — the platform d
 
 1. Add this repository as a custom HACS repository:
    - HACS → Integrations → ⋮ → Custom repositories
-   - URL: `https://github.com/joelvandal/roulezelectrique-ha`
+   - URL: `https://github.com/joelvandal/ha-roulezelectrique`
    - Category: Integration
 2. Search for "Roulez Électrique" and install.
 3. Restart Home Assistant.
@@ -88,7 +88,7 @@ Your API token can be rotated or revoked at any time from **Profile → Integrat
 
 ## BETA limitations
 
-- Remote control is OCPP-only (the platform has no remote API for Tesla/Wallbox).
+- Remote start/stop and current control are available for OCPP chargers and Wallbox chargers (when a Wallbox account is linked in your profile). Tesla, Sigenergy, and other vendors appear read-only.
 - The **Session energy** sensor measures the current charging session only and resets to 0 each session — it is **not** a lifetime cumulative meter, so it is **not recommended as a Home Assistant Energy dashboard source** (the Energy dashboard expects an ever-increasing total).
 - Brand assets (HA brands repo) are pending submission.
 - A dedicated public GitHub repo for HACS distribution is forthcoming.

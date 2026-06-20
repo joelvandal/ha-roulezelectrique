@@ -25,7 +25,8 @@ from .conftest import STATE_ENVELOPE
 # ---------------------------------------------------------------------------
 
 VALID_INPUT = {
-    CONF_BASE_URL: DEFAULT_BASE_URL,
+    # base_url is no longer a user-supplied field — the flow uses DEFAULT_BASE_URL
+    # internally. Only the API token is asked of the user.
     CONF_API_TOKEN: "test-token-valid",
 }
 

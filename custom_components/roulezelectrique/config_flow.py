@@ -19,7 +19,7 @@ from homeassistant.const import CONF_URL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import AuthError, ConnectError, RoulezElectriqueApiClient
+from .api import AuthError, ConnectError, RoulezElectriqueApiClient, RoulezElectriqueError
 from .const import (
     CONF_API_TOKEN,
     CONF_BASE_URL,
@@ -32,15 +32,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _user_schema(default_base_url: str = DEFAULT_BASE_URL) -> vol.Schema:
-    return vol.Schema(
-        {
-            vol.Required(CONF_BASE_URL, default=default_base_url): str,
-            vol.Required(CONF_API_TOKEN): str,
-        }
-    )
 
 
 def _token_schema() -> vol.Schema:
@@ -63,11 +54,16 @@ class RoulezElectriqueConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Initial step: collect base_url and api_token."""
+        """Initial step: collect api_token only.
+
+        The base URL is fixed to DEFAULT_BASE_URL and is not exposed as a user
+        field — there is only one correct value (the platform URL). It is stored
+        in the config entry so existing entries keep working if the URL ever
+        changes, but users should never need to type it themselves.
+        """
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            self._base_url = user_input[CONF_BASE_URL].rstrip("/")
             self._api_token = user_input[CONF_API_TOKEN]
 
             unique_id, error = await self._validate_credentials(
@@ -88,11 +84,9 @@ class RoulezElectriqueConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_user_schema(
-                default_base_url=self._base_url or DEFAULT_BASE_URL
-            ),
+            data_schema=_token_schema(),
             errors=errors,
-            description_placeholders={},
+            description_placeholders={"base_url": self._base_url},
         )
 
     async def async_step_reauth(
@@ -164,7 +158,11 @@ class RoulezElectriqueConfigFlow(ConfigFlow, domain=DOMAIN):
             return unique_id, None
         except AuthError:
             return None, "invalid_auth"
-        except ConnectError:
+        except (ConnectError, RoulezElectriqueError):
+            # RoulezElectriqueError covers any unexpected HTTP status during
+            # setup (404 for a wrong base URL path, 403, 422, etc.). All of
+            # these indicate a connectivity/configuration issue rather than a
+            # bad token, so "cannot_connect" is the most actionable label.
             return None, "cannot_connect"
         except Exception:  # noqa: BLE001
             return None, "unknown"
