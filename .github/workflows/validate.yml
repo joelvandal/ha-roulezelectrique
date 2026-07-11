@@ -37,15 +37,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: tests/requirements.txt
 
       - name: Install dependencies
-        run: |
-          pip install \
-            pytest \
-            pytest-asyncio \
-            pytest-homeassistant-custom-component \
-            aiohttp \
-            voluptuous
+        run: pip install -r tests/requirements.txt
 
       - name: Run tests
         run: pytest tests/ -v --tb=short
