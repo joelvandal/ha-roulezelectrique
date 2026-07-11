@@ -128,7 +128,7 @@ The integration supports HA's built-in diagnostics download (Settings → Device
 
 - Tesla and Sigenergy DC chargers are **read-only** — the platform does not expose remote control for them.
 - The **Session energy** sensor measures the current charging session only and resets to 0 each session — it is **not** a lifetime cumulative meter, so it is **not recommended as a Home Assistant Energy dashboard source** (the Energy dashboard expects an ever-increasing total). The account's **Lifetime energy** sensor is the cumulative one.
-- Brand assets (HA brands repo) are pending submission — until then, the integration shows without a logo in HA.
+- The integration ships its own brand icon/logo (`brand/` folder, supported since Home Assistant 2026.3.0). On older HA versions the integration works fine but shows without a logo.
 
 ---
 
