@@ -28,12 +28,15 @@ from custom_components.roulezelectrique.switch import RoulezElectriqueSwitch
 from custom_components.roulezelectrique.switch import RoulezElectriqueLockSwitch
 
 from .conftest import (
+    AVE_CHARGER,
     COMMAND_ACCEPTED,
     COMMAND_REJECTED,
     COMMAND_TIMEOUT,
     NON_OCPP_CHARGER,
     OCPP_CHARGER,
     OCPP_CHARGER_CHARGING,
+    SIGENERGY_DC_CHARGER,
+    TESLA_CHARGER_LIVE,
     WALLBOX_CHARGER,
 )
 
@@ -389,6 +392,74 @@ async def test_wallbox_gets_charge_and_lock_switch():
     lock_switches = [e for e in added if isinstance(e, RoulezElectriqueLockSwitch)]
     assert len(lock_switches) == 1
     assert lock_switches[0]._charger_id == 3
+
+
+# ---------------------------------------------------------------------------
+# AVE: charge switch created (account-based control), NO lock switch
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ave_gets_charge_switch_but_no_lock_switch():
+    """async_setup_entry creates a charge switch for AVE, but no lock switch —
+    ChargerActionsController's /lock route is Wallbox-only."""
+    from custom_components.roulezelectrique.switch import async_setup_entry
+
+    from custom_components.roulezelectrique.coordinator import CoordinatorData
+
+    coordinator = MagicMock()
+    coordinator.data = CoordinatorData(
+        chargers={1: OCPP_CHARGER, 4: AVE_CHARGER}, account=None
+    )
+
+    hass = MagicMock()
+    entry_id = "entry_id"
+    hass.data = {DOMAIN: {entry_id: coordinator, f"{entry_id}_client": MagicMock()}}
+    entry = MagicMock()
+    entry.entry_id = entry_id
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    # OCPP → 1 charge switch; AVE → 1 charge switch, no lock switch = 2 total.
+    assert len(added) == 2
+    lock_switches = [e for e in added if isinstance(e, RoulezElectriqueLockSwitch)]
+    assert len(lock_switches) == 0
+    charge_switch_ids = sorted(e._charger_id for e in added)
+    assert charge_switch_ids == [1, 4]
+
+
+@pytest.mark.asyncio
+async def test_ave_charge_switch_reflects_charging_and_is_available():
+    """AVE's charge switch state/availability follow the same server fields
+    (controllable, charging) as OCPP/Wallbox — no AVE-specific branching."""
+    switch, _ = _make_switch(AVE_CHARGER)
+    assert switch.available is True
+    assert switch.is_on is True
+
+
+@pytest.mark.asyncio
+async def test_no_switch_for_tesla_or_sigenergy_dc():
+    """Tesla and Sigenergy DC are never controllable — no switch entity."""
+    from custom_components.roulezelectrique.switch import async_setup_entry
+
+    from custom_components.roulezelectrique.coordinator import CoordinatorData
+
+    coordinator = MagicMock()
+    coordinator.data = CoordinatorData(
+        chargers={5: TESLA_CHARGER_LIVE, 6: SIGENERGY_DC_CHARGER}, account=None
+    )
+
+    hass = MagicMock()
+    entry_id = "entry_id"
+    hass.data = {DOMAIN: {entry_id: coordinator, f"{entry_id}_client": MagicMock()}}
+    entry = MagicMock()
+    entry.entry_id = entry_id
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert added == []
 
 
 def test_lock_switch_is_on_reflects_locked():

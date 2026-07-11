@@ -14,7 +14,14 @@ from custom_components.roulezelectrique.sensor import (
     RoulezElectriqueSensor,
 )
 
-from .conftest import NON_OCPP_CHARGER, OCPP_CHARGER, OCPP_CHARGER_CHARGING
+from .conftest import (
+    AVE_CHARGER,
+    NON_OCPP_CHARGER,
+    OCPP_CHARGER,
+    OCPP_CHARGER_CHARGING,
+    SIGENERGY_DC_CHARGER,
+    TESLA_CHARGER_LIVE,
+)
 
 
 def _make_coordinator(charger_data: dict[int, dict[str, Any]]):
@@ -166,3 +173,46 @@ def test_non_ocpp_last_session_available():
     val = sensor.native_value
     assert val is not None
     assert val.year == 2026
+
+
+# ---------------------------------------------------------------------------
+# AVE / Tesla / Sigenergy DC — same sensor set as OCPP/Wallbox, no code
+# changes required (SENSOR_DESCRIPTIONS is fully vendor-agnostic).
+# ---------------------------------------------------------------------------
+
+
+def test_ave_charger_yields_same_sensor_set_with_live_values():
+    power = _make_sensor(AVE_CHARGER, "power_kw")
+    assert power.native_value == pytest.approx(7.2)
+    assert power.available is True
+
+    energy = _make_sensor(AVE_CHARGER, "energy_kwh")
+    assert energy.native_value == pytest.approx(5.5)
+
+    current = _make_sensor(AVE_CHARGER, "current_a")
+    assert current.native_value == pytest.approx(32.0)
+
+    status = _make_sensor(AVE_CHARGER, "status")
+    # AVE's gunStatus vocabulary passes through as-is — same OCPP status slugs.
+    assert status.native_value == "charging"
+    assert status.native_value in status.options
+
+
+def test_tesla_charger_yields_same_sensor_set_with_live_values():
+    power = _make_sensor(TESLA_CHARGER_LIVE, "power_kw")
+    assert power.native_value == pytest.approx(7.2)
+    assert power.available is True
+
+    status = _make_sensor(TESLA_CHARGER_LIVE, "status")
+    assert status.native_value == "charging"
+    assert status.native_value in status.options
+
+
+def test_sigenergy_dc_charger_yields_same_sensor_set():
+    status = _make_sensor(SIGENERGY_DC_CHARGER, "status")
+    assert status.native_value == "charging"
+    assert status.native_value in status.options
+
+    # DC has no live power/current/energy reading — reports None, not an error.
+    power = _make_sensor(SIGENERGY_DC_CHARGER, "power_kw")
+    assert power.native_value is None

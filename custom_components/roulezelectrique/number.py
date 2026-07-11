@@ -4,10 +4,13 @@ Exposes the max charging current (amps) as a slider for bornes that support
 current-limit control:
   - OCPP bornes (smart-charging SetChargingProfile)
   - Wallbox bornes (setAmps cloud call — synchronous)
+  - AVE bornes (setAmps cloud call — synchronous)
   - Sigenergy AC bornes (setAcCurrent cloud call — synchronous)
 
 Other vendors (Tesla, Sigenergy DC, …) are never current-limit controllable
-and get NO number entity.
+and get NO number entity. Entity creation is data-driven (gated on the
+server's `current_limit_controllable` flag, see async_setup_entry below), so
+adding a new controllable vendor server-side requires NO change here.
 
 Entity behavior:
   - native_min/max_value: from the charger's `min_amps`/`max_amps` (server-
@@ -17,12 +20,12 @@ Entity behavior:
   - native_value: the current setting (`current_a`) when reported, else the max
     (so the slider shows a sensible position rather than empty).
   - available: gated on the server `current_limit_controllable` flag (pre-emptive
-    409 guard). For Sigenergy AC this is true when the account is active (not
-    gated on a live WebSocket — the cloud API is always reachable when the
-    account is active).
+    409 guard). For AVE/Sigenergy AC this is true when the account is active
+    (not gated on a live WebSocket — the cloud API is always reachable when
+    the account is active).
   - set: POST /chargers/{id}/power-limit {amps}. OCPP returns a command id to
-    poll (await_command); Wallbox and Sigenergy AC return a synchronous result
-    ({id:null, synchronous:true}) that MUST NOT be polled.
+    poll (await_command); Wallbox, AVE and Sigenergy AC return a synchronous
+    result ({id:null, synchronous:true}) that MUST NOT be polled.
 
 Error handling (fail-closed): rejected/timeout/failed, 409 offline, 429 rate
 limited → raise HomeAssistantError; a per-entity asyncio.Lock prevents two
@@ -57,9 +60,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up the max-current number entity for controllable-capable chargers.
 
-    Gates on the stable vendor (OCPP or Wallbox) — the same gate switch.py
-    uses — so the entity exists even while temporarily uncontrollable; runtime
-    availability reflects the server `controllable` flag.
+    Gates on the server's `current_limit_controllable` flag (data-driven —
+    see the module docstring), falling back to the legacy is_ocpp/Wallbox
+    check for older servers that don't send the field yet. Runtime
+    availability reflects the same flag via the `available` property.
     """
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
     client: RoulezElectriqueApiClient = hass.data[DOMAIN][f"{entry.entry_id}_client"]

@@ -29,10 +29,13 @@ from custom_components.roulezelectrique.coordinator import CoordinatorData
 from custom_components.roulezelectrique.number import RoulezElectriqueMaxCurrentNumber
 
 from .conftest import (
+    AVE_CHARGER,
     COMMAND_ACCEPTED,
     COMMAND_REJECTED,
     NON_OCPP_CHARGER,
     OCPP_CHARGER,
+    SIGENERGY_DC_CHARGER,
+    TESLA_CHARGER_LIVE,
     WALLBOX_CHARGER,
 )
 
@@ -194,3 +197,59 @@ async def test_number_created_for_ocpp_and_wallbox_not_others():
 
     ids = sorted(e._charger_id for e in added)
     assert ids == [1, 3]  # OCPP + Wallbox; Tesla (2) excluded
+
+
+@pytest.mark.asyncio
+async def test_number_created_for_ave_data_driven_no_code_change():
+    """AVE gets a number entity purely because the server sets
+    current_limit_controllable=True — no AVE-specific branch exists in
+    number.py's setup gate (it is entirely data-driven)."""
+    from custom_components.roulezelectrique.number import async_setup_entry
+
+    coordinator = MagicMock()
+    coordinator.data = CoordinatorData(chargers={4: AVE_CHARGER}, account=None)
+
+    hass = MagicMock()
+    entry_id = "entry_id"
+    hass.data = {DOMAIN: {entry_id: coordinator, f"{entry_id}_client": MagicMock()}}
+    entry = MagicMock()
+    entry.entry_id = entry_id
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 1
+    assert added[0]._charger_id == 4
+
+
+@pytest.mark.asyncio
+async def test_number_not_created_for_tesla_or_sigenergy_dc():
+    """Tesla and Sigenergy DC never report current_limit_controllable=True —
+    no number entity for either."""
+    from custom_components.roulezelectrique.number import async_setup_entry
+
+    coordinator = MagicMock()
+    coordinator.data = CoordinatorData(
+        chargers={5: TESLA_CHARGER_LIVE, 6: SIGENERGY_DC_CHARGER}, account=None
+    )
+
+    hass = MagicMock()
+    entry_id = "entry_id"
+    hass.data = {DOMAIN: {entry_id: coordinator, f"{entry_id}_client": MagicMock()}}
+    entry = MagicMock()
+    entry.entry_id = entry_id
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert added == []
+
+
+def test_ave_number_range_and_value():
+    """AVE number entity reflects the server's max_amps/min_amps/current_a,
+    same generic fields as OCPP/Wallbox."""
+    number, _ = _make_number(AVE_CHARGER)
+    assert number.native_min_value == 6.0
+    assert number.native_max_value == 40.0
+    assert number.native_value == 32.0
+    assert number.available is True

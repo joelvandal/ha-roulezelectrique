@@ -1,9 +1,11 @@
 """Binary sensor platform for the Roulez Électrique (BETA) integration.
 
-Two binary sensors per charger:
-  - Online (connectivity) — OCPP chargers only (non-OCPP chargers have no
-    real-time connection state tracked by the platform)
-  - Charging — all chargers
+Up to three binary sensors per charger (see BINARY_SENSOR_DESCRIPTIONS below
+for the exact per-vendor gating):
+  - Online (connectivity) — every vendor; the server only populates a
+    meaningful value for OCPP, Wallbox, AVE, Tesla and Sigenergy AC/DC.
+  - Charging — all chargers.
+  - Plugged in — Wallbox, AVE and Tesla only.
 """
 
 from __future__ import annotations
@@ -34,7 +36,9 @@ class RoulezElectriqueBinarySensorDescription(BinarySensorEntityDescription):
 
     value_fn: Any = field(default=None)
     ocpp_only: bool = False
-    wallbox_only: bool = False
+    # Non-empty tuple restricts entity creation to these vendors (server
+    # `vendor` string). Empty tuple = created for every vendor.
+    vendors: tuple[str, ...] = ()
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueBinarySensorDescription, ...] = (
@@ -43,11 +47,10 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueBinarySensorDescription, ...] 
         translation_key="online",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         value_fn=lambda c: bool(c.get("online")),
-        # OCPP and Sigenergy AC both report real-time connectivity. Wallbox also
-        # reports online (status-driven from the cloud snapshot). The ocpp_only
-        # flag is kept False so all vendors that expose `online` benefit from
-        # this sensor — the server only populates `online` with a meaningful
-        # value for vendors that have it.
+        # OCPP, Wallbox, AVE, Tesla and Sigenergy AC/DC all report real-time
+        # connectivity. The ocpp_only flag is kept False so all vendors that
+        # expose `online` benefit from this sensor — the server only
+        # populates `online` with a meaningful value for vendors that have it.
         ocpp_only=False,
     ),
     RoulezElectriqueBinarySensorDescription(
@@ -61,10 +64,11 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueBinarySensorDescription, ...] 
         key="plugged_in",
         translation_key="plugged_in",
         device_class=BinarySensorDeviceClass.PLUG,
-        # plugged_in is Wallbox-only: the server only populates this field for
-        # Wallbox bornes. The entity is skipped for all other vendors.
+        # plugged_in is populated by the server for Wallbox, AVE and Tesla
+        # only — the entity is skipped for all other vendors (OCPP has no
+        # plug-detection concept here; Sigenergy AC/DC don't report it either).
         value_fn=lambda c: bool(c.get("plugged_in")) if c.get("plugged_in") is not None else None,
-        wallbox_only=True,
+        vendors=("wallbox", "ave", "tesla"),
     ),
 )
 
@@ -81,12 +85,12 @@ async def async_setup_entry(
     charger_map = coordinator.data.chargers if coordinator.data else {}
     for charger_id, charger_data in charger_map.items():
         is_ocpp = bool(charger_data.get("is_ocpp"))
-        is_wallbox = charger_data.get("vendor") == "wallbox"
+        vendor = charger_data.get("vendor")
         for description in BINARY_SENSOR_DESCRIPTIONS:
             if description.ocpp_only and not is_ocpp:
                 continue  # Skip OCPP-only sensors for non-OCPP chargers
-            if description.wallbox_only and not is_wallbox:
-                continue  # Skip Wallbox-only sensors for other vendors
+            if description.vendors and vendor not in description.vendors:
+                continue  # Skip vendor-restricted sensors for other vendors
             entities.append(
                 RoulezElectriqueBinarySensor(coordinator, charger_id, description)
             )

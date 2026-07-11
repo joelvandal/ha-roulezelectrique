@@ -140,9 +140,48 @@ def test_account_sensor_device_info():
 
 
 def test_account_sensor_unique_id():
-    """Each account sensor has a stable unique_id prefixed with 'account_'."""
+    """Each account sensor unique_id equals the description key exactly (no double-prefix).
+
+    The description key already starts with 'account_' (e.g. 'account_rewards_total'),
+    so the unique_id must NOT prepend another 'account_' — that would produce
+    'account_account_rewards_total' which HA rejects as a duplicate ID.
+    """
     sensor = _make_account_sensor(ACCOUNT_DATA, "account_rewards_total")
-    assert sensor.unique_id == "account_account_rewards_total"
+    assert sensor.unique_id == "account_rewards_total"
+
+
+def test_all_account_sensor_unique_ids_are_distinct_and_non_doubled():
+    """All 10 account sensors must have distinct unique_ids with no doubled segment.
+
+    Regression test for the 'account_account_*' duplicate-ID bug: when the
+    unique_id builder prepended 'account_' to a key that already started with
+    'account_', HA discarded all sensors after the first with error
+    'ID already exists — ignoring sensor.*'.
+    """
+    from custom_components.roulezelectrique.sensor import ACCOUNT_SENSOR_DESCRIPTIONS
+
+    sensors = [
+        _make_account_sensor(ACCOUNT_DATA, desc.key)
+        for desc in ACCOUNT_SENSOR_DESCRIPTIONS
+    ]
+    unique_ids = [s.unique_id for s in sensors]
+
+    # All must be distinct
+    assert len(unique_ids) == len(set(unique_ids)), (
+        f"Duplicate unique_ids found: {unique_ids}"
+    )
+
+    # None may have a doubled segment (e.g. 'account_account_' or 'rewards_rewards_')
+    for uid in unique_ids:
+        parts = uid.split("_")
+        for i in range(len(parts) - 1):
+            assert parts[i] != parts[i + 1], (
+                f"unique_id '{uid}' has doubled segment '_{parts[i]}_'"
+            )
+        # Specifically guard against the known regression
+        assert "account_account" not in uid, (
+            f"unique_id '{uid}' contains double 'account_' prefix (regression)"
+        )
 
 
 # ---------------------------------------------------------------------------

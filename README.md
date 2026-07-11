@@ -86,6 +86,12 @@ Your API token can be rotated or revoked at any time from **Profile → Integrat
 
 ---
 
+## Upgrading
+
+- **From v0.2.4 or earlier:** the account-level sensors (rewards, invitations, lifetime energy, charger count) had a duplicated internal ID that is corrected automatically the first time the integration reloads after upgrading — your existing entity, its history, and any dashboards/automations referencing it are preserved (no re-adding, no new entity).
+
+---
+
 ## BETA limitations
 
 - Remote start/stop and current control are available for OCPP chargers and Wallbox chargers (when a Wallbox account is linked in your profile). Tesla, Sigenergy, and other vendors appear read-only.

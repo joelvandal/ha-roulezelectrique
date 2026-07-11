@@ -1,14 +1,14 @@
 """Switch platform for the Roulez Électrique (BETA) integration.
 
 Two switch types:
-  - Charge switch: created for every CONTROLLABLE-capable charger — OCPP
-    bornes and Wallbox bornes. on = charging; toggling calls remote-start/stop.
+  - Charge switch: created for every CONTROLLABLE-capable charger — OCPP,
+    Wallbox and AVE bornes. on = charging; toggling calls remote-start/stop.
   - Lock switch: Wallbox ONLY — on = borne locked; toggling calls POST
-    /chargers/{id}/lock {locked}. OCPP has no lock concept (no lock switch).
+    /chargers/{id}/lock {locked}. OCPP/AVE have no lock concept (no lock switch).
 
 The server's `controllable` predicate decides runtime availability (OCPP: live
-WebSocket; Wallbox: active account). Other vendors (Tesla, Sigenergy, …) are
-never controllable and get NO switch.
+WebSocket; Wallbox/AVE: active account). Other vendors (Tesla, Sigenergy, …)
+are never controllable and get NO switch.
 
 Switch behavior:
   - is_on: poll-confirmed `charging` value from coordinator
@@ -63,7 +63,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up switch entities from a config entry.
 
-    Controllable-capable chargers (OCPP or Wallbox) get a charge switch.
+    Controllable-capable chargers (OCPP, Wallbox or AVE) get a charge switch.
     Wallbox bornes additionally get a lock switch. Other vendors are skipped.
     """
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
@@ -73,19 +73,20 @@ async def async_setup_entry(
     charger_map = coordinator.data.chargers if coordinator.data else {}
     for charger_id, charger_data in charger_map.items():
         # Create a switch for any controllable-capable vendor. We gate on the
-        # stable vendor (OCPP or Wallbox) rather than the live `controllable`
-        # flag so the entity exists even while temporarily uncontrollable
-        # (offline OCPP / inactive account) — `available` reflects that at
-        # runtime. Other vendors never expose remote control.
+        # stable vendor (OCPP, Wallbox or AVE) rather than the live
+        # `controllable` flag so the entity exists even while temporarily
+        # uncontrollable (offline OCPP / inactive account) — `available`
+        # reflects that at runtime. Other vendors never expose remote control.
         is_wallbox = charger_data.get("vendor") == "wallbox"
-        if not (charger_data.get("is_ocpp") or is_wallbox):
+        is_ave = charger_data.get("vendor") == "ave"
+        if not (charger_data.get("is_ocpp") or is_wallbox or is_ave):
             _LOGGER.debug(
                 "Charger %s is not controllable-capable — no switch entity created",
                 charger_id,
             )
             continue
         entities.append(RoulezElectriqueSwitch(coordinator, client, charger_id))
-        # Lock switch is Wallbox-only (OCPP has no lock concept).
+        # Lock switch is Wallbox-only (OCPP/AVE have no lock concept).
         if is_wallbox:
             entities.append(RoulezElectriqueLockSwitch(coordinator, client, charger_id))
 

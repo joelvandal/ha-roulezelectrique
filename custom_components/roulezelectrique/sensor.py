@@ -381,8 +381,11 @@ class RoulezElectriqueAccountSensor(
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
-        # Stable unique_id: "account_<key>" — independent of any charger id.
-        self._attr_unique_id = f"account_{description.key}"
+        # Stable unique_id: use the key directly — it already carries the
+        # "account_" prefix (e.g. "account_rewards_total"), so prefixing it
+        # again would produce "account_account_rewards_total" and cause HA to
+        # discard every duplicate as "ID already exists".
+        self._attr_unique_id = description.key
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, "account")},
             name="Roulez Électrique",

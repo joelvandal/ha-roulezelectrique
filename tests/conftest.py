@@ -107,6 +107,92 @@ WALLBOX_CHARGER: dict[str, Any] = {
     "last_session": None,
 }
 
+# A controllable AVE borne: active account → controllable AND
+# current_limit_controllable (start/stop + setAmps both go through the AVE
+# cloud), with a warm cached live snapshot merged in by the server.
+AVE_CHARGER: dict[str, Any] = {
+    "id": 4,
+    "name": "AVE Borne",
+    "serial_number": "AVE-001",
+    "vendor": "ave",
+    "vendor_label": "AVE",
+    "is_ocpp": False,
+    "controllable": True,
+    "current_limit_controllable": True,
+    "online": True,
+    "status": "Charging",
+    "charging": True,
+    "power_kw": 7.2,
+    "energy_kwh": 5.5,
+    "current_a": 32,
+    "voltage_v": None,
+    "transaction_id": "12345",
+    "max_amps": 40,
+    "min_amps": 6,
+    "locked": None,
+    "plugged_in": True,
+    "fresh": True,
+    "stale": False,
+    "last_session": None,
+}
+
+# A read-only Tesla Wall Connector with a warm cached live snapshot merged in
+# (plugged_in + charging derived from power_w > 100 W, see TeslaLiveState).
+# Never controllable — ChargerActionsController has no Tesla branch.
+TESLA_CHARGER_LIVE: dict[str, Any] = {
+    "id": 5,
+    "name": "Tesla Wall Connector",
+    "serial_number": "TESLA-LIVE-001",
+    "vendor": "tesla",
+    "vendor_label": "Tesla",
+    "is_ocpp": False,
+    "controllable": False,
+    "current_limit_controllable": False,
+    "online": True,
+    "status": "Charging",
+    "charging": True,
+    "power_kw": 7.2,
+    "energy_kwh": None,
+    "current_a": None,
+    "voltage_v": None,
+    "transaction_id": None,
+    "max_amps": None,
+    "min_amps": None,
+    "locked": None,
+    "plugged_in": True,
+    "fresh": False,
+    "stale": False,
+    "last_session": None,
+}
+
+# A read-only Sigenergy DC EVSE with a warm cached live snapshot. Never
+# controllable — no DC control API exists (mutation endpoints not captured).
+SIGENERGY_DC_CHARGER: dict[str, Any] = {
+    "id": 6,
+    "name": "Sigenergy DC",
+    "serial_number": "SG-DC-001",
+    "vendor": "sigenergy",
+    "vendor_label": "Sigenergy (DC)",
+    "is_ocpp": False,
+    "controllable": False,
+    "current_limit_controllable": False,
+    "online": True,
+    "status": "Charging",
+    "charging": True,
+    "power_kw": None,
+    "energy_kwh": None,
+    "current_a": None,
+    "voltage_v": None,
+    "transaction_id": None,
+    "max_amps": None,
+    "min_amps": None,
+    "locked": None,
+    "plugged_in": None,
+    "fresh": False,
+    "stale": False,
+    "last_session": None,
+}
+
 ACCOUNT_DATA: dict[str, Any] = {
     "rewards": {
         "client": 12.50,
