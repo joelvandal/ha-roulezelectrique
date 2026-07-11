@@ -1,7 +1,6 @@
 {
   "name": "Roulez Électrique (BETA)",
   "content_in_root": false,
-  "filename": "roulezelectrique.zip",
   "homeassistant": "2024.1.0",
   "country": ["CA"],
   "render_readme": true
