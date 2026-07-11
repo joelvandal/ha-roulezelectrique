@@ -1,4 +1,4 @@
-"""Diagnostics support for Roulez Électrique (BETA).
+"""Diagnostics support for Roulez Électrique.
 
 The API token is redacted to prevent accidental exposure in diagnostic dumps.
 """

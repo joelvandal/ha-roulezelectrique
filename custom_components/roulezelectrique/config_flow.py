@@ -1,4 +1,4 @@
-"""Config flow for the Roulez Électrique (BETA) integration.
+"""Config flow for the Roulez Électrique integration.
 
 Steps:
   user  → ask for base_url + api_token; validate via GET /state
@@ -43,7 +43,7 @@ def _token_schema() -> vol.Schema:
 
 
 class RoulezElectriqueConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Roulez Électrique (BETA)."""
+    """Handle a config flow for Roulez Électrique."""
 
     VERSION = 1
 

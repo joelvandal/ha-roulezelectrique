@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Roulez Électrique — Connect (BETA / EXPERIMENTAL)",
-        "description": "**BETA / EXPERIMENTAL** — This integration is under active development and may change.\n\nTo get your access token, sign in at **{base_url}**, then go to **Profile → Integrations → Home Assistant** and click Activate. Copy the token shown and paste it below.",
+        "title": "Roulez Électrique — Connect",
+        "description": "To get your access token, sign in at **{base_url}**, then go to **Profile → Integrations → Home Assistant** and click Activate. Copy the token shown and paste it below.",
         "data": {
           "api_token": "API Token"
         }

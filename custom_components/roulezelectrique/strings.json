@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Roulez Électrique — Connexion (BÊTA / EXPÉRIMENTAL)",
-        "description": "**BÊTA / EXPÉRIMENTAL** — Cette intégration est en développement actif et peut changer.\n\nPour obtenir votre jeton d'accès, ouvrez votre compte sur **{base_url}**, puis allez dans **Profil → Intégrations → Home Assistant** et cliquez sur Activer. Copiez le jeton affiché et collez-le ci-dessous.",
+        "title": "Roulez Électrique — Connexion",
+        "description": "Pour obtenir votre jeton d'accès, ouvrez votre compte sur **{base_url}**, puis allez dans **Profil → Intégrations → Home Assistant** et cliquez sur Activer. Copiez le jeton affiché et collez-le ci-dessous.",
         "data": {
           "api_token": "Jeton API"
         }

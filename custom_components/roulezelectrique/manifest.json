@@ -1,6 +1,6 @@
 {
   "domain": "roulezelectrique",
-  "name": "Roulez Électrique (BETA)",
+  "name": "Roulez Électrique",
   "codeowners": ["@joelvandal"],
   "config_flow": true,
   "documentation": "https://github.com/joelvandal/ha-roulezelectrique",
@@ -8,5 +8,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/joelvandal/ha-roulezelectrique/issues",
   "requirements": [],
-  "version": "0.2.5"
+  "version": "0.3.0"
 }

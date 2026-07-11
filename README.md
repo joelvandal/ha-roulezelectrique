@@ -1,7 +1,5 @@
 # Roulez Électrique — Home Assistant Integration
 
-> **BETA / EXPERIMENTAL** — This integration is under active development. APIs, entity names, and behavior may change without notice. Use in production at your own risk.
-
 Connect your [Roulez Électrique](https://roulezelectrique.club) EV chargers to Home Assistant: live telemetry for every charger in your account, plus remote control (start/stop, charging-current limit, lock) for the vendors that support it.
 
 ---
@@ -88,7 +86,7 @@ Telemetry sensors (power, energy, current, voltage) go *unavailable* when the ch
 
 1. Sign in at [roulezelectrique.club](https://roulezelectrique.club).
 2. Go to **Profile → Integrations → Home Assistant**.
-3. Click **Activate** (BETA). Your token is shown **once** — copy it now.
+3. Click **Activate**. Your token is shown **once** — copy it now.
 
 ### Step 2 — Add the integration in HA
 
@@ -126,7 +124,7 @@ The integration supports HA's built-in diagnostics download (Settings → Device
 
 ---
 
-## BETA limitations
+## Known limitations
 
 - Tesla and Sigenergy DC chargers are **read-only** — the platform does not expose remote control for them.
 - The **Session energy** sensor measures the current charging session only and resets to 0 each session — it is **not** a lifetime cumulative meter, so it is **not recommended as a Home Assistant Energy dashboard source** (the Energy dashboard expects an ever-increasing total). The account's **Lifetime energy** sensor is the cumulative one.

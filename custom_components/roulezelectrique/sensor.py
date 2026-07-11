@@ -1,4 +1,4 @@
-"""Sensor platform for the Roulez Électrique (BETA) integration.
+"""Sensor platform for the Roulez Électrique integration.
 
 One device per charger; sensors per charger:
   - Power (kW)                device_class=power,      state_class=measurement

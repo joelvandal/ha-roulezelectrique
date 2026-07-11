@@ -1,11 +1,9 @@
-"""Roulez Électrique (BETA) Home Assistant integration.
+"""Roulez Électrique Home Assistant integration.
 
 This integration connects Home Assistant to the Roulez Électrique EV charging
 rewards platform (roulezelectrique.club). It exposes your chargers as HA
 devices with live sensor data. OCPP-capable chargers also get a switch entity
 for remote start/stop.
-
-BETA / EXPERIMENTAL: feature parity and API stability may change.
 """
 
 from __future__ import annotations

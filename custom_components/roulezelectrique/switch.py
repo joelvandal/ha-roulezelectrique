@@ -1,4 +1,4 @@
-"""Switch platform for the Roulez Électrique (BETA) integration.
+"""Switch platform for the Roulez Électrique integration.
 
 Two switch types:
   - Charge switch: created for every CONTROLLABLE-capable charger — OCPP,

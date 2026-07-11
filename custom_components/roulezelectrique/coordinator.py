@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for the Roulez Électrique (BETA) integration.
+"""DataUpdateCoordinator for the Roulez Électrique integration.
 
 One GET /api/v1/home-assistant/state call per refresh interval. The result is
 stored as a CoordinatorData object holding:

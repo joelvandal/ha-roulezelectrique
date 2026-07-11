@@ -1,4 +1,4 @@
-"""Binary sensor platform for the Roulez Électrique (BETA) integration.
+"""Binary sensor platform for the Roulez Électrique integration.
 
 Up to three binary sensors per charger (see BINARY_SENSOR_DESCRIPTIONS below
 for the exact per-vendor gating):

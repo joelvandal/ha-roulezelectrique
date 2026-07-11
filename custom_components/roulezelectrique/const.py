@@ -1,7 +1,7 @@
-"""Constants for the Roulez Électrique (BETA) Home Assistant integration."""
+"""Constants for the Roulez Électrique Home Assistant integration."""
 
 DOMAIN = "roulezelectrique"
-INTEGRATION_NAME = "Roulez Électrique (BETA)"
+INTEGRATION_NAME = "Roulez Électrique"
 
 # Config entry keys
 CONF_BASE_URL = "base_url"

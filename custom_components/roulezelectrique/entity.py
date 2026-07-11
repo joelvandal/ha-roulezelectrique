@@ -1,4 +1,4 @@
-"""Base entity class for the Roulez Électrique (BETA) integration.
+"""Base entity class for the Roulez Électrique integration.
 
 Each physical charger becomes one HA Device. All entity types (sensor,
 binary_sensor, switch) inherit from RoulezElectriqueEntity and share:
