@@ -261,7 +261,9 @@ def test_energy_kwh_lifetime_metadata():
 
     sensor = _make_account_sensor(ACCOUNT_DATA, "account_energy_kwh_lifetime")
     assert sensor.device_class == SensorDeviceClass.ENERGY
-    assert sensor.state_class == SensorStateClass.TOTAL_INCREASING
+    # TOTAL, not TOTAL_INCREASING: backed by a full recompute (ChargerStats::
+    # compute over report_entries) that can occasionally decrease.
+    assert sensor.state_class == SensorStateClass.TOTAL
     assert sensor.native_unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR
 
 

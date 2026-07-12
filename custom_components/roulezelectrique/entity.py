@@ -34,13 +34,17 @@ class RoulezElectriqueEntity(CoordinatorEntity[RoulezElectriqueCoordinator]):
     ) -> None:
         super().__init__(coordinator)
         self._charger_id = charger_id
-        # Device: one per charger
+        # Device: one per charger. `manufacturer`/`model` come from the server
+        # when it reports them (OCPP: the borne's own reported brand/model;
+        # Sigenergy AC: its cloud-reported model) and fall back to the
+        # previous vendor_label-based values for every other case (older
+        # server, or a vendor that reports neither).
         charger = self._charger_data
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, str(charger_id))},
             name=charger.get("name") or charger.get("serial_number") or f"Charger {charger_id}",
-            manufacturer=charger.get("vendor_label") or charger.get("vendor"),
-            model=charger.get("vendor_label"),
+            manufacturer=charger.get("manufacturer") or charger.get("vendor_label") or charger.get("vendor"),
+            model=charger.get("model") or charger.get("vendor_label"),
             serial_number=charger.get("serial_number"),
         )
 

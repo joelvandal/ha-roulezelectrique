@@ -68,6 +68,39 @@
       "last_seen": {
         "name": "Last session"
       },
+      "lifetime_energy": {
+        "name": "Lifetime energy"
+      },
+      "lifetime_sessions": {
+        "name": "Lifetime sessions"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "soc": {
+        "name": "Battery level"
+      },
+      "draw_current": {
+        "name": "Measured current"
+      },
+      "last_connection": {
+        "name": "Last connection"
+      },
+      "session_start": {
+        "name": "Session start"
+      },
+      "charging_speed": {
+        "name": "Charging speed"
+      },
+      "added_range": {
+        "name": "Added range"
+      },
+      "connection_type": {
+        "name": "Connection type"
+      },
+      "vin": {
+        "name": "VIN"
+      },
       "account_rewards_total": {
         "name": "Total rewards"
       },

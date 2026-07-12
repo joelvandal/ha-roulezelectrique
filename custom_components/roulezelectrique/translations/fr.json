@@ -68,6 +68,39 @@
       "last_seen": {
         "name": "Dernière session"
       },
+      "lifetime_energy": {
+        "name": "Énergie totale"
+      },
+      "lifetime_sessions": {
+        "name": "Sessions totales"
+      },
+      "temperature": {
+        "name": "Température"
+      },
+      "soc": {
+        "name": "Niveau de charge"
+      },
+      "draw_current": {
+        "name": "Courant mesuré"
+      },
+      "last_connection": {
+        "name": "Dernière connexion"
+      },
+      "session_start": {
+        "name": "Début de session"
+      },
+      "charging_speed": {
+        "name": "Vitesse de charge"
+      },
+      "added_range": {
+        "name": "Autonomie ajoutée"
+      },
+      "connection_type": {
+        "name": "Type de connexion"
+      },
+      "vin": {
+        "name": "NIV"
+      },
       "account_rewards_total": {
         "name": "Récompenses totales"
       },

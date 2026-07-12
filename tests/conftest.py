@@ -193,6 +193,158 @@ SIGENERGY_DC_CHARGER: dict[str, Any] = {
     "last_session": None,
 }
 
+# ---------------------------------------------------------------------------
+# "Full" fixtures — a server that sends the newer per-charger fields,
+# including `capabilities`. Used to test capability-gated sensor creation,
+# the diagnostics dict, device manufacturer/model, and the lifetime sensors.
+# The fixtures ABOVE (no `capabilities` key at all) keep covering the legacy
+# fallback for an older server — they are intentionally left untouched.
+# ---------------------------------------------------------------------------
+
+OCPP_CHARGER_FULL: dict[str, Any] = {
+    **OCPP_CHARGER,
+    "id": 10,
+    "serial_number": "RE-FULL001",
+    "capabilities": [
+        "energy_lifetime", "status", "last_session",
+        "power", "energy_session", "current", "voltage",
+        "last_connection", "session_start", "temperature", "soc",
+    ],
+    "lifetime_energy_kwh": 512.75,
+    "lifetime_sessions": 42,
+    "manufacturer": "EVDuty",
+    "model": "EVC48",
+    "last_connection_at": "2026-07-12T10:00:00+00:00",
+    "session_started_at": "2026-07-12T09:30:00+00:00",
+    "temperature_c": 28.4,
+    "soc_percent": 63.0,
+    "draw_current_a": None,
+    "connection_type": None,
+    "charging_speed_kmh": None,
+    "added_range_km": None,
+    "vin": None,
+    "diagnostics": {},
+}
+
+WALLBOX_CHARGER_FULL: dict[str, Any] = {
+    **WALLBOX_CHARGER,
+    "id": 11,
+    "serial_number": "WB-FULL001",
+    "capabilities": [
+        "energy_lifetime", "status", "last_session",
+        "power", "energy_session", "current",
+        "last_connection", "charging_speed", "added_range",
+    ],
+    "lifetime_energy_kwh": 88.2,
+    "lifetime_sessions": 9,
+    "manufacturer": None,
+    "model": None,
+    "last_connection_at": "2026-07-12T09:00:00+00:00",
+    "session_started_at": None,
+    "temperature_c": None,
+    "soc_percent": None,
+    "draw_current_a": None,
+    "connection_type": None,
+    "charging_speed_kmh": 32.5,
+    "added_range_km": 8.1,
+    "vin": None,
+    "diagnostics": {},
+}
+
+SIGENERGY_AC_CHARGER_FULL: dict[str, Any] = {
+    "id": 12,
+    "name": "Sigenergy AC",
+    "serial_number": "SG-AC-FULL001",
+    "vendor": "sigenergy",
+    "vendor_label": "Sigenergy (AC)",
+    "is_ocpp": False,
+    "controllable": False,
+    "current_limit_controllable": True,
+    "online": True,
+    "status": "Charging",
+    "charging": True,
+    "power_kw": 7.1,
+    "energy_kwh": None,
+    "current_a": 16,
+    "voltage_v": 240.0,
+    "transaction_id": None,
+    "max_amps": 32,
+    "min_amps": 6,
+    "locked": None,
+    "plugged_in": None,
+    "fresh": True,
+    "stale": False,
+    "last_session": None,
+    "capabilities": [
+        "energy_lifetime", "status", "last_session",
+        "power", "current", "voltage", "temperature",
+        "connection_type", "draw_current", "session_start",
+    ],
+    "lifetime_energy_kwh": 200.0,
+    "lifetime_sessions": 20,
+    "manufacturer": None,
+    "model": "SE-AC",
+    "last_connection_at": None,
+    "session_started_at": "2026-07-12T08:00:00+00:00",
+    "temperature_c": 38.5,
+    "soc_percent": None,
+    "draw_current_a": 16.0,
+    "connection_type": "ethernet",
+    "charging_speed_kmh": None,
+    "added_range_km": None,
+    "vin": None,
+    "diagnostics": {"rated_power_kw": 7.4, "max_current_a": 32},
+}
+
+TESLA_CHARGER_FULL: dict[str, Any] = {
+    **TESLA_CHARGER_LIVE,
+    "id": 13,
+    "serial_number": "TESLA-FULL001",
+    "capabilities": ["energy_lifetime", "status", "last_session", "power", "vin"],
+    "lifetime_energy_kwh": 300.0,
+    "lifetime_sessions": 15,
+    "manufacturer": None,
+    "model": None,
+    "last_connection_at": None,
+    "session_started_at": None,
+    "temperature_c": None,
+    "soc_percent": None,
+    "draw_current_a": None,
+    "connection_type": None,
+    "charging_speed_kmh": None,
+    "added_range_km": None,
+    "vin": "5YJ3E1EA0KF000099",
+    "diagnostics": {
+        "wall_connector_state_code": 3,
+        "wall_connector_fault_state_code": 0,
+    },
+}
+
+# A vendor with no optional live-state source (e.g. FLO) on a NEW server:
+# `capabilities` is present but carries only the three baseline entries.
+BASELINE_CHARGER_FULL: dict[str, Any] = {
+    **NON_OCPP_CHARGER,
+    "id": 14,
+    "vendor": "flo",
+    "vendor_label": "FLO",
+    "serial_number": "FLO-FULL001",
+    "capabilities": ["energy_lifetime", "status", "last_session"],
+    "lifetime_energy_kwh": 0.0,
+    "lifetime_sessions": 0,
+    "manufacturer": None,
+    "model": None,
+    "last_connection_at": None,
+    "session_started_at": None,
+    "temperature_c": None,
+    "soc_percent": None,
+    "draw_current_a": None,
+    "connection_type": None,
+    "charging_speed_kmh": None,
+    "added_range_km": None,
+    "vin": None,
+    "diagnostics": {},
+}
+
 ACCOUNT_DATA: dict[str, Any] = {
     "rewards": {
         "client": 12.50,

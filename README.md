@@ -19,6 +19,19 @@ One HA **device per charger**, plus one **Account** device for program-level sta
 
 Control availability is decided **server-side** (the platform's `controllable` / `current_limit_controllable` flags): an OCPP charger must be online (live WebSocket), and cloud vendors (Wallbox, AVE, Sigenergy AC) need an active linked account. When control is temporarily unavailable, the entity exists but shows as *unavailable* — it never fails silently.
 
+Extra per-vendor sensors (below) are created **only for the chargers that can report them** — a Tesla Wall Connector never gets a temperature sensor, a Wallbox never gets a VIN sensor, etc. This is decided by the platform, per charger, so it stays correct automatically as the platform adds vendors.
+
+| Vendor | Lifetime energy/sessions | Measured current | Temperature | Battery % | Last connection | Session start | Charging speed / Added range | Connection type | VIN |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **OCPP** | ✅ | — | rare¹ | rare¹ | ✅ | ✅ | — | — | — |
+| **Wallbox** | ✅ | — | — | — | ✅ | — | ✅ | — | — |
+| **AVE** | ✅ | — | — | — | — | ✅ | — | — | — |
+| **Tesla** | ✅ | — | — | — | — | — | — | — | ✅ |
+| **Sigenergy AC** | ✅ | ✅ | ✅ | — | — | ✅ | — | ✅ | — |
+| **Sigenergy DC** | ✅ | — | — | — | — | — | — | — | — |
+
+¹ Only chargers that actually send a Temperature/SoC reading in their reports will show a value; most don't. The sensor is created for every OCPP charger (so it appears the moment a charger starts reporting it) but reads *unknown* until then.
+
 ---
 
 ## Entities
@@ -28,12 +41,22 @@ Control availability is decided **server-side** (the platform's `controllable` /
 **Sensors**
 - **Power** (kW)
 - **Session energy** (kWh) — energy delivered in the **current session**; resets each session
-- **Status** (enum: available, preparing, charging, suspended_evse, suspended_ev, finishing, reserved, unavailable, faulted)
+- **Status** (enum: available, preparing, charging, suspended_evse, suspended_ev, finishing, reserved, unavailable, faulted) — vendor-specific diagnostic codes (e.g. Tesla wall-connector codes, Sigenergy diagnostics), when the platform has any for that charger, are attached as extra attributes on this sensor
 - **Current** (A)
 - **Voltage** (V)
 - **Last session** (timestamp)
+- **Lifetime energy** (kWh) — cumulative energy across every session ever recorded for this charger; see *Energy dashboard* below
+- **Lifetime sessions** (count)
+- **Temperature** (°C) — OCPP (when reported) and Sigenergy AC
+- **Battery level** (%) — OCPP only, when the charger reports it (rare)
+- **Measured current** (A) — Sigenergy AC only; the *live* draw, separate from the "Current" sensor above, which stays the configured limit
+- **Last connection** (timestamp) — OCPP, Wallbox
+- **Session start** (timestamp) — OCPP, AVE, Sigenergy AC (not available from Wallbox's cloud)
+- **Charging speed** (km/h) and **Added range** (km) — Wallbox only
+- **Connection type** (ethernet/wifi/cellular) — Sigenergy AC only
+- **VIN** — Tesla only, the connected vehicle's VIN
 
-Telemetry sensors (power, energy, current, voltage) go *unavailable* when the charger is offline or its data is stale; status and last-session remain readable.
+Telemetry sensors (power, energy, current, voltage, temperature, battery level, measured current, charging speed, added range) go *unavailable* when the charger is offline or its data is stale. Status, last-session, lifetime energy/sessions, last connection, session start, connection type and VIN remain readable even while the charger is offline.
 
 **Binary sensors**
 - **Online** (connectivity) — all vendors
@@ -49,8 +72,14 @@ Telemetry sensors (power, energy, current, voltage) go *unavailable* when the ch
 
 - **Rewards** (CAD): total, client, ambassador, referee, referrer
 - **Invitations**: pending, accepted, referred
-- **Lifetime energy** (kWh)
+- **Lifetime energy** (kWh) — a running lifetime total across all your chargers that may occasionally be adjusted downward when the platform corrects duplicate or erroneous session data (a periodic recount, not a live meter); see *Energy dashboard* below
 - **Charger count**
+
+---
+
+## Energy dashboard
+
+Use each charger's **Lifetime energy** sensor as the source when adding a charger to Home Assistant's Energy dashboard. It is a running lifetime total that may occasionally be adjusted downward when the platform corrects duplicate or erroneous session data (a periodic recount, not a live meter) — it remains the right sensor for the Energy dashboard. The **Session energy** sensor resets to 0 at the start of every charging session, so it is **not** suitable there (see *Known limitations*).
 
 ---
 
@@ -121,13 +150,16 @@ The integration supports HA's built-in diagnostics download (Settings → Device
 ## Upgrading
 
 - **From v0.2.4 or earlier:** the account-level sensors (rewards, invitations, lifetime energy, charger count) had a duplicated internal ID that is corrected automatically the first time the integration reloads after upgrading — your existing entities, their history, and any dashboards/automations referencing them are preserved (no re-adding, no new entity).
+- **From v0.3.x:** new per-charger sensors (Lifetime energy, Lifetime sessions, Temperature, Battery level, Measured current, Last connection, Session start, Charging speed, Added range, Connection type, VIN) appear automatically on the first reload for every charger whose vendor can report them — no re-adding, no configuration change needed. Existing entity IDs are untouched, but the account-level **Lifetime energy** sensor's state class changes from `total_increasing` to `total` (it can now be corrected downward, e.g. after a data cleanup, without Home Assistant misreading that as a meter reset). Home Assistant may log a one-time "statistics metadata changed" notice for that sensor when this happens — this is expected and harmless; its long-term statistics and history keep working normally.
 
 ---
 
 ## Known limitations
 
 - Tesla and Sigenergy DC chargers are **read-only** — the platform does not expose remote control for them.
-- The **Session energy** sensor measures the current charging session only and resets to 0 each session — it is **not** a lifetime cumulative meter, so it is **not recommended as a Home Assistant Energy dashboard source** (the Energy dashboard expects an ever-increasing total). The account's **Lifetime energy** sensor is the cumulative one.
+- The **Session energy** sensor measures the current charging session only and resets to 0 each session — it is **not** a lifetime cumulative meter, so it is **not recommended as a Home Assistant Energy dashboard source** (the Energy dashboard expects an ever-increasing total). Each charger's own **Lifetime energy** sensor (and the account's) is the cumulative one — see *Energy dashboard* above.
+- **WiFi signal strength is not available for any charger, from any vendor.** Tesla's own device does report a signal-strength value, but only over its local network API on the same LAN — the cloud API this platform reads from does not carry it, so there is no way to surface it here for Tesla or any other vendor.
+- **Temperature** and **Battery level** sensors on OCPP chargers only show a value for the small number of chargers whose firmware actually reports those readings; most read *unknown* permanently, which is expected (the sensor is still created so it starts working the moment a charger begins reporting it).
 - The integration ships its own brand icon/logo (`brand/` folder, supported since Home Assistant 2026.3.0). On older HA versions the integration works fine but shows without a logo.
 
 ---
