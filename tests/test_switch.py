@@ -8,7 +8,9 @@ Covers:
   - turn_off offline (409) → HomeAssistantError
   - turn_off rate limited (429) → HomeAssistantError
   - per-switch lock prevents overlap
-  - NO switch for non-OCPP charger
+  - NO switch for non-OCPP, non-Wallbox, non-AVE, non-Sigenergy charger
+  - Sigenergy (AC/DC) gets a charge switch, no lock switch, synchronous
+    start/stop (0.5.0+)
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ from .conftest import (
     NON_OCPP_CHARGER,
     OCPP_CHARGER,
     OCPP_CHARGER_CHARGING,
+    SIGENERGY_AC_CHARGER_FULL,
     SIGENERGY_DC_CHARGER,
     TESLA_CHARGER_LIVE,
     WALLBOX_CHARGER,
@@ -439,16 +442,14 @@ async def test_ave_charge_switch_reflects_charging_and_is_available():
 
 
 @pytest.mark.asyncio
-async def test_no_switch_for_tesla_or_sigenergy_dc():
-    """Tesla and Sigenergy DC are never controllable — no switch entity."""
+async def test_no_switch_for_tesla():
+    """Tesla is never controllable — no switch entity."""
     from custom_components.roulezelectrique.switch import async_setup_entry
 
     from custom_components.roulezelectrique.coordinator import CoordinatorData
 
     coordinator = MagicMock()
-    coordinator.data = CoordinatorData(
-        chargers={5: TESLA_CHARGER_LIVE, 6: SIGENERGY_DC_CHARGER}, account=None
-    )
+    coordinator.data = CoordinatorData(chargers={5: TESLA_CHARGER_LIVE}, account=None)
 
     hass = MagicMock()
     entry_id = "entry_id"
@@ -460,6 +461,89 @@ async def test_no_switch_for_tesla_or_sigenergy_dc():
     await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
 
     assert added == []
+
+
+# ---------------------------------------------------------------------------
+# Sigenergy (AC + DC): charge switch created, no lock switch, synchronous
+# start/stop through the same remote-start/remote-stop endpoints as
+# Wallbox/AVE (0.5.0+ — the server now sets `controllable` for Sigenergy
+# AC/DC with an active linked account).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_sigenergy_gets_charge_switch_but_no_lock_switch():
+    """async_setup_entry creates a charge switch for Sigenergy (AC and DC),
+    but no lock switch — ChargerActionsController's /lock route is
+    Wallbox-only."""
+    from custom_components.roulezelectrique.switch import async_setup_entry
+
+    from custom_components.roulezelectrique.coordinator import CoordinatorData
+
+    coordinator = MagicMock()
+    coordinator.data = CoordinatorData(
+        chargers={
+            1: OCPP_CHARGER,
+            5: TESLA_CHARGER_LIVE,
+            6: SIGENERGY_DC_CHARGER,
+            12: SIGENERGY_AC_CHARGER_FULL,
+        },
+        account=None,
+    )
+
+    hass = MagicMock()
+    entry_id = "entry_id"
+    hass.data = {DOMAIN: {entry_id: coordinator, f"{entry_id}_client": MagicMock()}}
+    entry = MagicMock()
+    entry.entry_id = entry_id
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    # OCPP → 1 charge switch; Sigenergy DC + AC → 1 charge switch each; Tesla
+    # → none. Total = 3.
+    assert len(added) == 3
+    lock_switches = [e for e in added if isinstance(e, RoulezElectriqueLockSwitch)]
+    assert len(lock_switches) == 0
+    charge_switch_ids = sorted(e._charger_id for e in added)
+    assert charge_switch_ids == [1, 6, 12]
+
+
+@pytest.mark.asyncio
+async def test_sigenergy_charge_switch_turn_on_synchronous():
+    """Sigenergy turn_on: synchronous response (id=None) → no poll, refresh
+    called — same synchronous contract as Wallbox/AVE."""
+    switch, coordinator = _make_switch(SIGENERGY_DC_CHARGER, start_return=SYNC_ACCEPTED)
+
+    await switch.async_turn_on()
+
+    switch._client.remote_start.assert_awaited_once_with(6)
+    switch._client.await_command.assert_not_awaited()
+    coordinator.async_request_refresh.assert_awaited_once()
+    assert switch._optimistic_is_on is None
+
+
+@pytest.mark.asyncio
+async def test_sigenergy_charge_switch_turn_off_synchronous_no_transaction_id():
+    """Sigenergy turn_off: not OCPP, so no transaction_id is required (like
+    AVE/Wallbox) — synchronous response, no poll, refresh called."""
+    switch, coordinator = _make_switch(SIGENERGY_DC_CHARGER, stop_return=SYNC_ACCEPTED)
+
+    await switch.async_turn_off()
+
+    switch._client.remote_stop.assert_awaited_once_with(6, 0)
+    switch._client.await_command.assert_not_awaited()
+    coordinator.async_request_refresh.assert_awaited_once()
+    assert switch._optimistic_is_on is None
+
+
+def test_sigenergy_charge_switch_available_and_reflects_charging():
+    """Sigenergy's charge switch state/availability follow the same server
+    fields (controllable, charging) as OCPP/Wallbox/AVE — no Sigenergy-
+    specific branching."""
+    switch, _ = _make_switch(SIGENERGY_DC_CHARGER)
+    assert switch.available is True
+    assert switch.is_on is True
 
 
 def test_lock_switch_is_on_reflects_locked():

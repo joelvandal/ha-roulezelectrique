@@ -2,8 +2,11 @@
 
 Covers:
   - online/charging created for every vendor
-  - plugged_in created ONLY for vendors that report it (Wallbox, AVE, Tesla)
-  - plugged_in NOT created for OCPP or Sigenergy (AC/DC)
+  - plugged_in created CAPABILITY-DRIVEN: whenever the server's per-charger
+    `capabilities` list contains "plugged_in" (0.5.0+) — no vendor hardcoding.
+    This now covers OCPP and Sigenergy AC/DC in addition to Wallbox/AVE/Tesla.
+  - plugged_in NOT created when `capabilities` omits it (or is absent
+    entirely, e.g. an older server / a vendor like FLO that never reports it)
   - is_on values reflect the server's generic fields (no vendor branching)
 """
 
@@ -24,7 +27,10 @@ from custom_components.roulezelectrique.coordinator import CoordinatorData
 
 from .conftest import (
     AVE_CHARGER,
+    BASELINE_CHARGER_FULL,
     OCPP_CHARGER_CHARGING,
+    OCPP_CHARGER_FULL,
+    SIGENERGY_AC_CHARGER_FULL,
     SIGENERGY_DC_CHARGER,
     TESLA_CHARGER_LIVE,
     WALLBOX_CHARGER,
@@ -84,21 +90,45 @@ async def test_online_and_charging_created_for_every_vendor():
 
 
 @pytest.mark.asyncio
-async def test_plugged_in_created_only_for_wallbox_ave_tesla():
+async def test_plugged_in_created_from_capability_not_vendor():
+    """plugged_in is created purely from the server's `capabilities` list —
+    OCPP and Sigenergy AC now report the capability too (0.5.0+), while a
+    vendor whose capabilities list omits it (FLO/baseline) gets none.
+    """
     added = await _setup(
         {
-            1: OCPP_CHARGER_CHARGING,
-            3: WALLBOX_CHARGER,
-            4: AVE_CHARGER,
-            5: TESLA_CHARGER_LIVE,
-            6: SIGENERGY_DC_CHARGER,
+            10: OCPP_CHARGER_FULL,
+            12: SIGENERGY_AC_CHARGER_FULL,
+            14: BASELINE_CHARGER_FULL,
         }
     )
     plugged_in_ids = sorted(
         e._charger_id for e in added if e.entity_description.key == "plugged_in"
     )
-    # OCPP (1) and Sigenergy DC (6) never report plugged_in — no entity.
-    assert plugged_in_ids == [3, 4, 5]
+    # OCPP (10) and Sigenergy AC (12) both list "plugged_in" in `capabilities`;
+    # FLO/baseline (14) does not.
+    assert plugged_in_ids == [10, 12]
+
+
+@pytest.mark.asyncio
+async def test_plugged_in_not_created_without_capabilities_key():
+    """A charger dict with no `capabilities` key at all (older server, or a
+    fixture predating the capability) never gets the plugged_in sensor, even
+    for a vendor known to report it in production. This documents the
+    intentional 0.5.0 change from a hardcoded vendor tuple to a purely
+    capability-driven gate.
+    """
+    added = await _setup(
+        {
+            3: WALLBOX_CHARGER,
+            4: AVE_CHARGER,
+            5: TESLA_CHARGER_LIVE,
+        }
+    )
+    plugged_in_ids = [
+        e._charger_id for e in added if e.entity_description.key == "plugged_in"
+    ]
+    assert plugged_in_ids == []
 
 
 # ---------------------------------------------------------------------------
@@ -127,3 +157,10 @@ def test_sigenergy_dc_online_and_charging_values():
     assert sensor.is_on is True
     sensor2 = _make_binary_sensor(SIGENERGY_DC_CHARGER, "charging")
     assert sensor2.is_on is True
+
+
+def test_sigenergy_ac_plugged_in_value():
+    """Sigenergy AC's plugged_in value follows the same generic field read
+    as every other vendor — no Sigenergy-specific branching."""
+    sensor = _make_binary_sensor(SIGENERGY_AC_CHARGER_FULL, "plugged_in")
+    assert sensor.is_on is True

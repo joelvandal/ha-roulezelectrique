@@ -136,6 +136,10 @@ KNOWN_CAPABILITIES = frozenset(
         "charging_speed",
         "added_range",
         "vin",
+        # Consumed by binary_sensor.py (the plugged_in binary sensor), not by
+        # any RoulezElectriqueSensorDescription here — still required in this
+        # set so the two-repo contract check below covers it too.
+        "plugged_in",
     }
 )
 

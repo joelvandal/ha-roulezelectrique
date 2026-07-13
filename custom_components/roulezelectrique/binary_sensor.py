@@ -5,7 +5,11 @@ for the exact per-vendor gating):
   - Online (connectivity) — every vendor; the server only populates a
     meaningful value for OCPP, Wallbox, AVE, Tesla and Sigenergy AC/DC.
   - Charging — all chargers.
-  - Plugged in — Wallbox, AVE and Tesla only.
+  - Plugged in — CAPABILITY-DRIVEN (not vendor-hardcoded): created whenever
+    the server's per-charger `capabilities` list contains "plugged_in". The
+    server currently reports that capability for OCPP, Wallbox, AVE, Tesla
+    and Sigenergy AC/DC — but this platform never hardcodes that vendor list;
+    it simply follows what the server declares.
 """
 
 from __future__ import annotations
@@ -39,6 +43,11 @@ class RoulezElectriqueBinarySensorDescription(BinarySensorEntityDescription):
     # Non-empty tuple restricts entity creation to these vendors (server
     # `vendor` string). Empty tuple = created for every vendor.
     vendors: tuple[str, ...] = ()
+    # Non-None restricts entity creation to chargers whose server
+    # `capabilities` list contains this string (see sensor.py's
+    # KNOWN_CAPABILITIES two-repo contract — this value must be a member).
+    # None = not gated on capabilities (use `vendors`/`ocpp_only` instead).
+    capability: str | None = None
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueBinarySensorDescription, ...] = (
@@ -64,11 +73,14 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueBinarySensorDescription, ...] 
         key="plugged_in",
         translation_key="plugged_in",
         device_class=BinarySensorDeviceClass.PLUG,
-        # plugged_in is populated by the server for Wallbox, AVE and Tesla
-        # only — the entity is skipped for all other vendors (OCPP has no
-        # plug-detection concept here; Sigenergy AC/DC don't report it either).
+        # Capability-driven, not vendor-hardcoded: created whenever the
+        # server's `capabilities` list for this charger contains
+        # "plugged_in". The server currently sets that capability for OCPP,
+        # Wallbox, AVE, Tesla and Sigenergy AC/DC — but this description has
+        # no vendor list of its own, so a future vendor gaining plug-state
+        # reporting needs no client change.
         value_fn=lambda c: bool(c.get("plugged_in")) if c.get("plugged_in") is not None else None,
-        vendors=("wallbox", "ave", "tesla"),
+        capability="plugged_in",
     ),
 )
 
@@ -86,11 +98,14 @@ async def async_setup_entry(
     for charger_id, charger_data in charger_map.items():
         is_ocpp = bool(charger_data.get("is_ocpp"))
         vendor = charger_data.get("vendor")
+        capabilities = charger_data.get("capabilities", [])
         for description in BINARY_SENSOR_DESCRIPTIONS:
             if description.ocpp_only and not is_ocpp:
                 continue  # Skip OCPP-only sensors for non-OCPP chargers
             if description.vendors and vendor not in description.vendors:
                 continue  # Skip vendor-restricted sensors for other vendors
+            if description.capability and description.capability not in capabilities:
+                continue  # Skip capability-gated sensors the server didn't declare
             entities.append(
                 RoulezElectriqueBinarySensor(coordinator, charger_id, description)
             )

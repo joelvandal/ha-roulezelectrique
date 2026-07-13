@@ -165,8 +165,13 @@ TESLA_CHARGER_LIVE: dict[str, Any] = {
     "last_session": None,
 }
 
-# A read-only Sigenergy DC EVSE with a warm cached live snapshot. Never
-# controllable — no DC control API exists (mutation endpoints not captured).
+# A Sigenergy DC EVSE with an active linked account, with a warm cached live
+# snapshot. `controllable` is now True (0.5.0+): the server supports start/
+# stop for DC through the same remote-start/remote-stop endpoints as OCPP/
+# Wallbox/AVE (it branches AC vs DC internally), synchronous response — so
+# it gets a charge switch. `current_limit_controllable` stays False: there is
+# still no current-limit (amperage) control API for DC, so it gets no number
+# entity.
 SIGENERGY_DC_CHARGER: dict[str, Any] = {
     "id": 6,
     "name": "Sigenergy DC",
@@ -174,7 +179,7 @@ SIGENERGY_DC_CHARGER: dict[str, Any] = {
     "vendor": "sigenergy",
     "vendor_label": "Sigenergy (DC)",
     "is_ocpp": False,
-    "controllable": False,
+    "controllable": True,
     "current_limit_controllable": False,
     "online": True,
     "status": "Charging",
@@ -187,7 +192,7 @@ SIGENERGY_DC_CHARGER: dict[str, Any] = {
     "max_amps": None,
     "min_amps": None,
     "locked": None,
-    "plugged_in": None,
+    "plugged_in": True,
     "fresh": False,
     "stale": False,
     "last_session": None,
@@ -197,6 +202,9 @@ SIGENERGY_DC_CHARGER: dict[str, Any] = {
 # "Full" fixtures — a server that sends the newer per-charger fields,
 # including `capabilities`. Used to test capability-gated sensor creation,
 # the diagnostics dict, device manufacturer/model, and the lifetime sensors.
+# All four also carry "plugged_in" in `capabilities` (0.5.0+): the server now
+# reports that capability for OCPP, Wallbox, AVE, Tesla and Sigenergy AC/DC,
+# which drives binary_sensor.py's capability-gated plugged_in sensor.
 # The fixtures ABOVE (no `capabilities` key at all) keep covering the legacy
 # fallback for an older server — they are intentionally left untouched.
 # ---------------------------------------------------------------------------
@@ -209,6 +217,7 @@ OCPP_CHARGER_FULL: dict[str, Any] = {
         "energy_lifetime", "status", "last_session",
         "power", "energy_session", "current", "voltage",
         "last_connection", "session_start", "temperature", "soc",
+        "plugged_in",
     ],
     "lifetime_energy_kwh": 512.75,
     "lifetime_sessions": 42,
@@ -234,6 +243,7 @@ WALLBOX_CHARGER_FULL: dict[str, Any] = {
         "energy_lifetime", "status", "last_session",
         "power", "energy_session", "current",
         "last_connection", "charging_speed", "added_range",
+        "plugged_in",
     ],
     "lifetime_energy_kwh": 88.2,
     "lifetime_sessions": 9,
@@ -258,7 +268,9 @@ SIGENERGY_AC_CHARGER_FULL: dict[str, Any] = {
     "vendor": "sigenergy",
     "vendor_label": "Sigenergy (AC)",
     "is_ocpp": False,
-    "controllable": False,
+    # Active linked account (0.5.0+): controllable is now True for AC/DC
+    # start-stop, through the same synchronous remote-start/remote-stop calls.
+    "controllable": True,
     "current_limit_controllable": True,
     "online": True,
     "status": "Charging",
@@ -271,7 +283,7 @@ SIGENERGY_AC_CHARGER_FULL: dict[str, Any] = {
     "max_amps": 32,
     "min_amps": 6,
     "locked": None,
-    "plugged_in": None,
+    "plugged_in": True,
     "fresh": True,
     "stale": False,
     "last_session": None,
@@ -279,6 +291,7 @@ SIGENERGY_AC_CHARGER_FULL: dict[str, Any] = {
         "energy_lifetime", "status", "last_session",
         "power", "current", "voltage", "temperature",
         "connection_type", "draw_current", "session_start",
+        "plugged_in",
     ],
     "lifetime_energy_kwh": 200.0,
     "lifetime_sessions": 20,
@@ -300,7 +313,7 @@ TESLA_CHARGER_FULL: dict[str, Any] = {
     **TESLA_CHARGER_LIVE,
     "id": 13,
     "serial_number": "TESLA-FULL001",
-    "capabilities": ["energy_lifetime", "status", "last_session", "power", "vin"],
+    "capabilities": ["energy_lifetime", "status", "last_session", "power", "vin", "plugged_in"],
     "lifetime_energy_kwh": 300.0,
     "lifetime_sessions": 15,
     "manufacturer": None,
