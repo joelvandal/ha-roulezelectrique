@@ -11,7 +11,7 @@ Connect your [Roulez Électrique](https://roulezelectrique.club) EV chargers to 
 
 ---
 
-**Nouveau / New (v0.5.0):** Sigenergy AC & DC now support the start/stop charge switch, and the "Plugged in" binary sensor is capability-driven, covering OCPP and Sigenergy AC/DC in addition to Wallbox/AVE/Tesla. See the full docs above for details.
+**Nouveau / New (v0.6.0):** Six new OCPP diagnostic sensors (Wi-Fi signal, min/max charge level, charger current limit, heartbeat & meter intervals) read from an eligible charger's own configuration, plus a smarter max-current ceiling for Wallbox Pulsar Plus chargers on OCPP. See the full docs above for details.
 
 ## Licence / License
 

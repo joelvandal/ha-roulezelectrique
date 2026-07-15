@@ -101,6 +101,24 @@
       "vin": {
         "name": "VIN"
       },
+      "wifi_signal": {
+        "name": "Wi-Fi signal"
+      },
+      "soc_max_limit": {
+        "name": "Maximum charge level"
+      },
+      "soc_min_limit": {
+        "name": "Minimum charge level"
+      },
+      "configured_current_limit": {
+        "name": "Charger current limit"
+      },
+      "heartbeat_interval": {
+        "name": "Heartbeat interval"
+      },
+      "meter_sample_interval": {
+        "name": "Meter sample interval"
+      },
       "account_rewards_total": {
         "name": "Total rewards"
       },

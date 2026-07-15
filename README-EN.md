@@ -57,8 +57,16 @@ Extra per-vendor sensors (below) are created **only for the chargers that can re
 - **Charging speed** (km/h) and **Added range** (km) — Wallbox only
 - **Connection type** (ethernet/wifi/cellular) — Sigenergy AC only
 - **VIN** — Tesla only, the connected vehicle's VIN
+- **Wi-Fi signal** (%) — OCPP only; enabled by default
+- **Maximum charge level** (%) — OCPP only; disabled by default
+- **Minimum charge level** (%) — OCPP only; disabled by default
+- **Charger current limit** (A) — OCPP only; disabled by default
+- **Heartbeat interval** (s) — OCPP only; disabled by default
+- **Meter sample interval** (s) — OCPP only; disabled by default
 
-Telemetry sensors (power, energy, current, voltage, temperature, battery level, measured current, charging speed, added range) go *unavailable* when the charger is offline or its data is stale. Status, last-session, lifetime energy/sessions, last connection, session start, connection type and VIN remain readable even while the charger is offline.
+Telemetry sensors (power, energy, current, voltage, temperature, battery level, measured current, charging speed, added range) go *unavailable* when the charger is offline or its data is stale. Status, last-session, lifetime energy/sessions, last connection, session start, connection type, VIN and the six OCPP diagnostic sensors above remain readable even while the charger is offline.
+
+**OCPP configuration diagnostics (new in v0.6.0)** — the six sensors above (Wi-Fi signal, Maximum charge level, Minimum charge level, Charger current limit, Heartbeat interval, Meter sample interval) are read by the server directly from the `GetConfiguration` data the charger reports about itself, roughly once an hour — they are **not** live measurements, so a value can lag reality by up to an hour (which is also why they stay readable while offline, unlike the telemetry sensors above). They are created **per charger**, not per vendor: only for the specific OCPP charger that actually reported that key with a plausible value. Most of the fleet (EVduty/Elmec) only reports the heartbeat and meter-sample intervals; Wallbox Pulsar Plus chargers speaking OCPP additionally report Wi-Fi signal, min/max charge level and the current limit. Only **Wi-Fi signal** is enabled by default; the other five are disabled on install — enable them in the entity's settings if you want them. A charger linked less than an hour ago has not had its configuration read by the server yet, so these entities don't exist for it yet. Reload the integration once after the first hourly read to pick them up (unlike the vendor-driven sensors, which appear immediately).
 
 **Binary sensors**
 - **Online** (connectivity) — all vendors
@@ -67,7 +75,7 @@ Telemetry sensors (power, energy, current, voltage, temperature, battery level, 
 
 **Controls**
 - **Charge switch** (start/stop) — OCPP, Wallbox, AVE, Sigenergy AC and DC. Commands are confirmed end-to-end: OCPP commands are polled until the charger accepts/rejects; the other vendors respond synchronously (the result is already known in the response); failures surface as an HA error toast and the switch reverts (no fake state).
-- **Max current** (number slider, A) — OCPP (smart-charging `SetChargingProfile`), Wallbox, AVE, Sigenergy AC. Bounds come from the server (typically 6 A up to the charger's max). Not available for Sigenergy DC (no current-limit API on the DC side).
+- **Max current** (number slider, A) — OCPP (smart-charging `SetChargingProfile`), Wallbox, AVE, Sigenergy AC. Bounds come from the server (typically 6 A up to the charger's max). Since v0.6.0, when an OCPP charger reports its own hardware current limit in its configuration, that value is used as the ceiling — for example, Wallbox Pulsar Plus chargers on OCPP that report 48 A now get a 48 A ceiling instead of the generic 32 A default. Not available for Sigenergy DC (no current-limit API on the DC side).
 - **Lock switch** — Wallbox only (on = locked).
 
 ### Account device
@@ -154,6 +162,7 @@ The integration supports HA's built-in diagnostics download (Settings → Device
 - **From v0.2.4 or earlier:** the account-level sensors (rewards, invitations, lifetime energy, charger count) had a duplicated internal ID that is corrected automatically the first time the integration reloads after upgrading — your existing entities, their history, and any dashboards/automations referencing them are preserved (no re-adding, no new entity).
 - **From v0.3.x:** new per-charger sensors (Lifetime energy, Lifetime sessions, Temperature, Battery level, Measured current, Last connection, Session start, Charging speed, Added range, Connection type, VIN) appear automatically on the first reload for every charger whose vendor can report them — no re-adding, no configuration change needed. Existing entity IDs are untouched, but the account-level **Lifetime energy** sensor's state class changes from `total_increasing` to `total` (it can now be corrected downward, e.g. after a data cleanup, without Home Assistant misreading that as a meter reset). Home Assistant may log a one-time "statistics metadata changed" notice for that sensor when this happens — this is expected and harmless; its long-term statistics and history keep working normally.
 - **From v0.4.x:** Sigenergy AC and DC now get the start/stop switch (remote control, requires an active linked account), and the **Plugged in** binary sensor now also covers OCPP and Sigenergy AC/DC (previously limited to Wallbox/AVE/Tesla). These new entities appear automatically on the first reload for the affected chargers — no re-adding, no configuration change needed.
+- **From v0.5.x:** six new OCPP diagnostic sensors (Wi-Fi signal, Maximum charge level, Minimum charge level, Charger current limit, Heartbeat interval, Meter sample interval) appear for eligible OCPP chargers on the first reload after their configuration is next read hourly — no re-adding, no configuration change needed (see *Entities* above for the per-charger detail and default enablement).
 
 ---
 
@@ -162,7 +171,7 @@ The integration supports HA's built-in diagnostics download (Settings → Device
 - Tesla chargers are **read-only** — the platform does not expose remote control for them.
 - Sigenergy DC chargers get the start/stop switch but **not** the max-current slider — there is no current-limit API on the DC side.
 - The **Session energy** sensor measures the current charging session only and resets to 0 each session — it is **not** a lifetime cumulative meter, so it is **not recommended as a Home Assistant Energy dashboard source** (the Energy dashboard expects an ever-increasing total). Each charger's own **Lifetime energy** sensor (and the account's) is the cumulative one — see *Energy dashboard* above.
-- **WiFi signal strength is not available for any charger, from any vendor.** Tesla's own device does report a signal-strength value, but only over its local network API on the same LAN — the cloud API this platform reads from does not carry it, so there is no way to surface it here for Tesla or any other vendor.
+- **WiFi signal strength via a vendor's cloud API is not available for any charger, from any vendor.** Tesla's own device does report a signal-strength value, but only over its local network API on the same LAN — the cloud API this platform reads from does not carry it, so there is no way to surface it here for Tesla or any other vendor through that path. The **Wi-Fi signal** diagnostic sensor described above is a different thing: it comes from the `GetConfiguration` data an OCPP charger reports about itself (e.g. Wallbox Pulsar Plus on OCPP), not a live cloud API, so it only exists for OCPP chargers that report it.
 - **Temperature** and **Battery level** sensors on OCPP chargers only show a value for the small number of chargers whose firmware actually reports those readings; most read *unknown* permanently, which is expected (the sensor is still created so it starts working the moment a charger begins reporting it).
 - The integration ships its own brand icon/logo (`brand/` folder, supported since Home Assistant 2026.3.0). On older HA versions the integration works fine but shows without a logo.
 

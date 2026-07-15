@@ -11,12 +11,21 @@ One device per charger; sensors per charger:
 Plus a set of optional sensors created only for the vendors that can report
 them (Lifetime energy/sessions, Temperature, Battery %, Measured current,
 Last connection, Session start, Speed/Range added, Connection type, VIN — see
-SENSOR_DESCRIPTIONS below). Entity creation for these is DATA-DRIVEN: it reads
+SENSOR_DESCRIPTIONS below), and a set of OCPP diagnostics read back from the
+borne's own GetConfiguration (Wi-Fi signal, SoC envelope, configured current
+limit, heartbeat/meter intervals) which are advertised per borne rather than
+per vendor. Entity creation for these is DATA-DRIVEN: it reads
 the server's per-charger `capabilities` list (see async_setup_entry). The
 original six sensors above are ALWAYS created for every charger — never
 gated on `capabilities` — for registry compatibility with every published
 <=0.3.x install (see LEGACY_SENSOR_KEYS). Older servers that don't send
 `capabilities` simply never get any of the new sensors.
+
+The vendor-derived capabilities are known as soon as a charger is linked, so
+those sensors are created up front rather than hidden behind a cold first
+poll. The OCPP GetConfiguration ones are NOT: the server can only advertise
+them once it has read the key off the borne (hourly), so a borne linked in
+the last hour needs one integration reload before they appear.
 
 All sensors inherit availability from the base entity + coordinator success.
 """
@@ -44,6 +53,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfSpeed,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -140,6 +150,17 @@ KNOWN_CAPABILITIES = frozenset(
         # any RoulezElectriqueSensorDescription here — still required in this
         # set so the two-repo contract check below covers it too.
         "plugged_in",
+        # OCPP GetConfiguration diagnostics. Unlike every capability above
+        # (decided by the charger's VENDOR), these are advertised per borne
+        # based on the config keys it actually reported, so two OCPP chargers
+        # can legitimately expose different ones. Server side they are declared
+        # in OcppConfigDiagnostics::FIELDS, not in capabilitiesFor().
+        "wifi_signal",
+        "soc_max_limit",
+        "soc_min_limit",
+        "configured_current_limit",
+        "heartbeat_interval",
+        "meter_sample_interval",
     }
 )
 
@@ -257,6 +278,41 @@ def _parse_timestamp(c: dict, key: str) -> datetime | None:
         return dt_util.parse_datetime(raw)
     except (ValueError, TypeError):
         return None
+
+
+def _int_field(c: dict, key: str) -> int | None:
+    """Read an integer diagnostic the server already range-checked.
+
+    Every OCPP-config-derived field is validated server-side against a sane
+    range (OcppConfigDiagnostics::FIELDS) and omitted when it fails, so the
+    only case left to handle here is an absent/None value.
+    """
+    v = c.get(key)
+    return int(v) if v is not None else None
+
+
+def _wifi_signal(c: dict) -> int | None:
+    return _int_field(c, "wifi_signal_percent")
+
+
+def _soc_max_limit(c: dict) -> int | None:
+    return _int_field(c, "soc_max_percent")
+
+
+def _soc_min_limit(c: dict) -> int | None:
+    return _int_field(c, "soc_min_percent")
+
+
+def _configured_current_limit(c: dict) -> int | None:
+    return _int_field(c, "configured_current_limit_a")
+
+
+def _heartbeat_interval(c: dict) -> int | None:
+    return _int_field(c, "heartbeat_interval_seconds")
+
+
+def _meter_sample_interval(c: dict) -> int | None:
+    return _int_field(c, "meter_sample_interval_seconds")
 
 
 def _last_connection_at(c: dict) -> datetime | None:
@@ -420,6 +476,79 @@ SENSOR_DESCRIPTIONS: tuple[RoulezElectriqueSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_vin,
         capability="vin",
+    ),
+    # ── OCPP GetConfiguration diagnostics ────────────────────────────────
+    # Read back from the borne's own configuration, refreshed server-side
+    # roughly hourly (`ocpp:read-configs`) — NOT live telemetry. Hence
+    # DIAGNOSTIC category, and deliberately absent from
+    # STALE_GATED_SENSOR_KEYS: a config value stays true while the borne is
+    # offline, so blanking it on staleness would be wrong.
+    #
+    # These capabilities are the ONE exception to the "created up front" rule
+    # in the module docstring: the server advertises them per borne, only once
+    # it has actually read the key. A borne linked less than an hour ago has
+    # none of them yet, so an owner who set HA up in that window needs to
+    # reload the integration once to pick these entities up.
+    #
+    # Wi-Fi signal is enabled by default (the one an owner chasing a dropout
+    # actually wants); the rest are settings that rarely move, so they are
+    # opt-in to avoid dumping five idle entities per borne on every install.
+    RoulezElectriqueSensorDescription(
+        key="wifi_signal_percent",
+        translation_key="wifi_signal",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=PERCENTAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_wifi_signal,
+        capability="wifi_signal",
+    ),
+    RoulezElectriqueSensorDescription(
+        key="soc_max_percent",
+        translation_key="soc_max_limit",
+        native_unit_of_measurement=PERCENTAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=_soc_max_limit,
+        capability="soc_max_limit",
+    ),
+    RoulezElectriqueSensorDescription(
+        key="soc_min_percent",
+        translation_key="soc_min_limit",
+        native_unit_of_measurement=PERCENTAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=_soc_min_limit,
+        capability="soc_min_limit",
+    ),
+    RoulezElectriqueSensorDescription(
+        key="configured_current_limit_a",
+        translation_key="configured_current_limit",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=_configured_current_limit,
+        capability="configured_current_limit",
+    ),
+    RoulezElectriqueSensorDescription(
+        key="heartbeat_interval_seconds",
+        translation_key="heartbeat_interval",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=_heartbeat_interval,
+        capability="heartbeat_interval",
+    ),
+    RoulezElectriqueSensorDescription(
+        key="meter_sample_interval_seconds",
+        translation_key="meter_sample_interval",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=_meter_sample_interval,
+        capability="meter_sample_interval",
     ),
 )
 

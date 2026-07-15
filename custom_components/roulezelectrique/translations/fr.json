@@ -101,6 +101,24 @@
       "vin": {
         "name": "NIV"
       },
+      "wifi_signal": {
+        "name": "Signal Wi-Fi"
+      },
+      "soc_max_limit": {
+        "name": "Charge maximale"
+      },
+      "soc_min_limit": {
+        "name": "Charge minimale"
+      },
+      "configured_current_limit": {
+        "name": "Limite de courant de la borne"
+      },
+      "heartbeat_interval": {
+        "name": "Intervalle de battement"
+      },
+      "meter_sample_interval": {
+        "name": "Intervalle de mesure"
+      },
       "account_rewards_total": {
         "name": "Récompenses totales"
       },

@@ -25,6 +25,7 @@ from .conftest import (
     OCPP_CHARGER,
     OCPP_CHARGER_CHARGING,
     OCPP_CHARGER_FULL,
+    OCPP_CHARGER_WITH_CONFIG_DIAGNOSTICS,
     SIGENERGY_AC_CHARGER_FULL,
     SIGENERGY_DC_CHARGER,
     TESLA_CHARGER_FULL,
@@ -388,6 +389,79 @@ def test_status_sensor_diagnostics_absent_on_legacy_charger():
 
 
 # ---------------------------------------------------------------------------
+# OCPP GetConfiguration diagnostics (Wi-Fi signal, SoC envelope, intervals)
+# ---------------------------------------------------------------------------
+
+
+def test_config_diagnostic_sensors_read_their_values():
+    for key, expected in (
+        ("wifi_signal_percent", 92),
+        ("soc_max_percent", 97),
+        ("soc_min_percent", 9),
+        ("configured_current_limit_a", 48),
+        ("heartbeat_interval_seconds", 60),
+        ("meter_sample_interval_seconds", 60),
+    ):
+        sensor = _make_sensor(OCPP_CHARGER_WITH_CONFIG_DIAGNOSTICS, key)
+        assert sensor.native_value == expected, key
+
+
+def test_config_diagnostic_sensors_stay_available_when_offline():
+    """Config is not live telemetry: it stays true while the borne is offline.
+
+    Blanking these on staleness would be wrong — hence their absence from
+    STALE_GATED_SENSOR_KEYS.
+    """
+    offline = {**OCPP_CHARGER_WITH_CONFIG_DIAGNOSTICS, "online": False, "stale": True}
+    for key in ("wifi_signal_percent", "configured_current_limit_a", "heartbeat_interval_seconds"):
+        assert _make_sensor(offline, key).available is True, key
+
+
+def test_config_diagnostic_sensor_reports_unknown_when_server_omits_value():
+    """Capability advertised but value absent → unknown, never a crash."""
+    without = {**OCPP_CHARGER_WITH_CONFIG_DIAGNOSTICS, "wifi_signal_percent": None}
+    assert _make_sensor(without, "wifi_signal_percent").native_value is None
+
+
+def test_only_wifi_signal_is_enabled_by_default_among_config_diagnostics():
+    """The rarely-moving settings are opt-in so an install isn't flooded."""
+    by_key = {d.key: d for d in SENSOR_DESCRIPTIONS}
+    assert by_key["wifi_signal_percent"].entity_registry_enabled_default is True
+    for key in (
+        "soc_max_percent", "soc_min_percent", "configured_current_limit_a",
+        "heartbeat_interval_seconds", "meter_sample_interval_seconds",
+    ):
+        assert by_key[key].entity_registry_enabled_default is False, key
+
+
+@pytest.mark.asyncio
+async def test_wallbox_over_ocpp_gets_config_diagnostic_sensors():
+    added = await _setup({15: OCPP_CHARGER_WITH_CONFIG_DIAGNOSTICS})
+    keys = {e.entity_description.key for e in added}
+    assert {
+        "wifi_signal_percent", "soc_max_percent", "soc_min_percent",
+        "configured_current_limit_a", "heartbeat_interval_seconds",
+        "meter_sample_interval_seconds",
+    } <= keys
+
+
+@pytest.mark.asyncio
+async def test_ocpp_charger_without_config_keys_gets_no_diagnostic_sensors():
+    """An EVduty reports no Wi-Fi/SoC keys, so the server advertises no such
+    capability and the entity is never created — rather than created and
+    permanently unavailable.
+    """
+    added = await _setup({10: OCPP_CHARGER_FULL})
+    keys = {e.entity_description.key for e in added}
+    for key in (
+        "wifi_signal_percent", "soc_max_percent", "soc_min_percent",
+        "configured_current_limit_a", "heartbeat_interval_seconds",
+        "meter_sample_interval_seconds",
+    ):
+        assert key not in keys, key
+
+
+# ---------------------------------------------------------------------------
 # Two-repo capability contract (KNOWN_CAPABILITIES mirrors the server's
 # HomeAssistantController::capabilitiesFor() CAP_* constants)
 # ---------------------------------------------------------------------------
@@ -406,6 +480,22 @@ def test_every_sensor_capability_is_a_known_capability():
             "in KNOWN_CAPABILITIES — mirror it from "
             "HomeAssistantController::capabilitiesFor()"
         )
+
+
+def test_every_sensor_translation_key_is_translated():
+    """A description whose translation_key is missing from strings.json or a
+    translations/ file renders as an unnamed entity in that language.
+    """
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "custom_components" / "roulezelectrique"
+    used = {d.translation_key for d in SENSOR_DESCRIPTIONS if d.translation_key}
+
+    for name in ("strings.json", "translations/fr.json", "translations/en.json"):
+        declared = json.loads((root / name).read_text())["entity"]["sensor"]
+        missing = used - set(declared)
+        assert not missing, f"{name} is missing sensor names for: {sorted(missing)}"
 
 
 # ---------------------------------------------------------------------------

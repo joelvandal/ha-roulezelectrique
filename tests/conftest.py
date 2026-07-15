@@ -235,6 +235,33 @@ OCPP_CHARGER_FULL: dict[str, Any] = {
     "diagnostics": {},
 }
 
+# A Wallbox Pulsar Plus speaking OCPP (vendor="ocpp", NOT the Wallbox cloud
+# API) — the real-world shape behind the OCPP GetConfiguration diagnostics.
+# Mirrors production charger 97936: it reports WiFiSignalStrength/maxSoC/minSoC/
+# chargingALimitConn1 on top of the OCPP core keys every borne reports, so its
+# `capabilities` carry all six config-derived entries. The 48 A ceiling comes
+# from chargingALimitConn1 (Charger::configReportedMaxAmps tier 2), NOT from
+# the 32 A default — that regression is what this fixture pins.
+OCPP_CHARGER_WITH_CONFIG_DIAGNOSTICS: dict[str, Any] = {
+    **OCPP_CHARGER_FULL,
+    "id": 15,
+    "serial_number": "RE-WBOCPP1",
+    "manufacturer": "Wall Box Chargers",
+    "model": "PUP1-U-1-6",
+    "max_amps": 48,
+    "capabilities": [
+        *OCPP_CHARGER_FULL["capabilities"],
+        "wifi_signal", "soc_max_limit", "soc_min_limit",
+        "configured_current_limit", "heartbeat_interval", "meter_sample_interval",
+    ],
+    "wifi_signal_percent": 92,
+    "soc_max_percent": 97,
+    "soc_min_percent": 9,
+    "configured_current_limit_a": 48,
+    "heartbeat_interval_seconds": 60,
+    "meter_sample_interval_seconds": 60,
+}
+
 WALLBOX_CHARGER_FULL: dict[str, Any] = {
     **WALLBOX_CHARGER,
     "id": 11,
