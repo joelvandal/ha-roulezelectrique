@@ -174,5 +174,53 @@
         "name": "Max charging current"
       }
     }
+  },
+  "services": {
+    "remote_start": {
+      "name": "Remote start",
+      "description": "Starts a remote charging session on a specific charger.",
+      "fields": {
+        "charger_id": {
+          "name": "Charger",
+          "description": "The charger device to start."
+        },
+        "connector_id": {
+          "name": "Connector ID",
+          "description": "The ID of the connector on the charger (OCPP only)."
+        },
+        "id_tag": {
+          "name": "ID Tag",
+          "description": "The RFID/ID tag to authorize with (OCPP only)."
+        }
+      }
+    },
+    "remote_stop": {
+      "name": "Remote stop",
+      "description": "Stops a remote charging session on a specific charger.",
+      "fields": {
+        "charger_id": {
+          "name": "Charger",
+          "description": "The charger device to stop."
+        },
+        "transaction_id": {
+          "name": "Transaction ID",
+          "description": "The active transaction ID to stop (OCPP only)."
+        }
+      }
+    },
+    "set_power_limit": {
+      "name": "Set power limit",
+      "description": "Sets the maximum charging current (amps) for a specific charger.",
+      "fields": {
+        "charger_id": {
+          "name": "Charger",
+          "description": "The charger device to configure."
+        },
+        "amps": {
+          "name": "Current limit",
+          "description": "The maximum charging current in amperes."
+        }
+      }
+    }
   }
 }

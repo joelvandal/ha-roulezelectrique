@@ -9,17 +9,214 @@ for remote start/stop.
 from __future__ import annotations
 
 import logging
+import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import RoulezElectriqueApiClient
+from .api import OfflineError, RateLimitedError, RoulezElectriqueApiClient
 from .const import CONF_API_TOKEN, CONF_BASE_URL, DOMAIN, PLATFORMS
 from .coordinator import RoulezElectriqueCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+SERVICE_REMOTE_START = "remote_start"
+SERVICE_REMOTE_STOP = "remote_stop"
+SERVICE_SET_POWER_LIMIT = "set_power_limit"
+
+SERVICE_REMOTE_START_SCHEMA = vol.Schema(
+    {
+        vol.Required("charger_id"): cv.string,
+        vol.Optional("connector_id"): cv.positive_int,
+        vol.Optional("id_tag"): cv.string,
+    }
+)
+
+SERVICE_REMOTE_STOP_SCHEMA = vol.Schema(
+    {
+        vol.Required("charger_id"): cv.string,
+        vol.Optional("transaction_id"): cv.positive_int,
+    }
+)
+
+SERVICE_SET_POWER_LIMIT_SCHEMA = vol.Schema(
+    {
+        vol.Required("charger_id"): cv.string,
+        vol.Required("amps"): cv.positive_int,
+    }
+)
+
+
+def _resolve_charger_id(hass: HomeAssistant, target: str) -> int:
+    """Resolve a device ID or numeric charger ID to the internal integer charger ID."""
+    try:
+        return int(target)
+    except ValueError:
+        pass
+
+    device_registry = dr.async_get(hass)
+    device_entry = device_registry.async_get(target)
+    if not device_entry:
+        raise HomeAssistantError(f"Device '{target}' not found in Home Assistant")
+
+    for identifier in device_entry.identifiers:
+        if identifier[0] == DOMAIN:
+            try:
+                return int(identifier[1])
+            except ValueError:
+                continue
+
+    raise HomeAssistantError(f"Device '{target}' is not a valid Roulez Électrique charger")
+
+
+def _get_client_and_coordinator(
+    hass: HomeAssistant, charger_id: int
+) -> tuple[RoulezElectriqueApiClient, RoulezElectriqueCoordinator] | tuple[None, None]:
+    """Find the client and coordinator for a given charger_id across all entries."""
+    for entry_id, val in hass.data.get(DOMAIN, {}).items():
+        if isinstance(val, RoulezElectriqueCoordinator):
+            if val.data and charger_id in val.data.chargers:
+                client = hass.data[DOMAIN].get(f"{entry_id}_client")
+                if client:
+                    return client, val
+    return None, None
+
+
+def _async_setup_services(hass: HomeAssistant) -> None:
+    """Set up the services for Roulez Électrique."""
+
+    async def async_handle_remote_start(call) -> None:
+        raw_charger_id = call.data["charger_id"]
+        charger_id = _resolve_charger_id(hass, raw_charger_id)
+        connector_id = call.data.get("connector_id")
+        id_tag = call.data.get("id_tag")
+
+        client, coordinator = _get_client_and_coordinator(hass, charger_id)
+        if not client or not coordinator:
+            raise HomeAssistantError(f"Charger with ID {charger_id} not found in any integration entry")
+
+        try:
+            result = await client.remote_start(
+                charger_id=charger_id,
+                connector_id=connector_id,
+                id_tag=id_tag,
+            )
+            if not result.get("synchronous") and result.get("id") is not None:
+                cmd = await client.await_command(result["id"])
+                final_status = cmd.get("status", "")
+                if final_status != "accepted":
+                    error_detail = cmd.get("error") or cmd.get("result") or final_status
+                    raise HomeAssistantError(f"Remote start {final_status}: {error_detail}")
+            await coordinator.async_request_refresh()
+        except OfflineError as err:
+            raise HomeAssistantError(f"Charger {charger_id} is offline — cannot start charge session") from err
+        except RateLimitedError as err:
+            raise HomeAssistantError(f"Too many requests — please wait {err.retry_after}s before retrying") from err
+        except Exception as err:
+            if isinstance(err, HomeAssistantError):
+                raise
+            raise HomeAssistantError(f"Could not start charge session on charger {charger_id}: {err}") from err
+
+    async def async_handle_remote_stop(call) -> None:
+        raw_charger_id = call.data["charger_id"]
+        charger_id = _resolve_charger_id(hass, raw_charger_id)
+        transaction_id = call.data.get("transaction_id")
+
+        client, coordinator = _get_client_and_coordinator(hass, charger_id)
+        if not client or not coordinator:
+            raise HomeAssistantError(f"Charger with ID {charger_id} not found in any integration entry")
+
+        if transaction_id is None:
+            charger_data = coordinator.data.chargers.get(charger_id, {})
+            is_ocpp = bool(charger_data.get("is_ocpp"))
+            transaction_id = charger_data.get("transaction_id")
+            if is_ocpp and not transaction_id:
+                raise HomeAssistantError(
+                    f"No active transaction for charger {charger_id} — cannot stop charge session (no transaction_id reported)"
+                )
+
+        try:
+            result = await client.remote_stop(
+                charger_id=charger_id,
+                transaction_id=transaction_id or 0,
+            )
+            if not result.get("synchronous") and result.get("id") is not None:
+                cmd = await client.await_command(result["id"])
+                final_status = cmd.get("status", "")
+                if final_status != "accepted":
+                    error_detail = cmd.get("error") or cmd.get("result") or final_status
+                    raise HomeAssistantError(f"Remote stop {final_status}: {error_detail}")
+            await coordinator.async_request_refresh()
+        except OfflineError as err:
+            raise HomeAssistantError(f"Charger {charger_id} is offline — cannot stop charge session") from err
+        except RateLimitedError as err:
+            raise HomeAssistantError(f"Too many requests — please wait {err.retry_after}s before retrying") from err
+        except Exception as err:
+            if isinstance(err, HomeAssistantError):
+                raise
+            raise HomeAssistantError(f"Could not stop charge session on charger {charger_id}: {err}") from err
+
+    async def async_handle_set_power_limit(call) -> None:
+        raw_charger_id = call.data["charger_id"]
+        charger_id = _resolve_charger_id(hass, raw_charger_id)
+        amps = call.data["amps"]
+
+        client, coordinator = _get_client_and_coordinator(hass, charger_id)
+        if not client or not coordinator:
+            raise HomeAssistantError(f"Charger with ID {charger_id} not found in any integration entry")
+
+        # Validation of max_amps
+        charger_data = coordinator.data.chargers.get(charger_id, {})
+        max_amps = charger_data.get("max_amps")
+        if max_amps is not None and amps > max_amps:
+            raise HomeAssistantError(
+                f"Le courant demandé de {amps}A dépasse la limite maximale de la borne ({max_amps}A)"
+            )
+
+        try:
+            result = await client.set_power_limit(
+                charger_id=charger_id,
+                amps=amps,
+            )
+            if not result.get("synchronous") and result.get("id") is not None:
+                cmd = await client.await_command(result["id"])
+                final_status = cmd.get("status", "")
+                if final_status != "accepted":
+                    error_detail = cmd.get("error") or cmd.get("result") or final_status
+                    raise HomeAssistantError(f"Set charging current {final_status}: {error_detail}")
+            await coordinator.async_request_refresh()
+        except OfflineError as err:
+            raise HomeAssistantError(f"Charger {charger_id} is offline — cannot set charging current") from err
+        except RateLimitedError as err:
+            raise HomeAssistantError(f"Too many requests — please wait {err.retry_after}s before retrying") from err
+        except Exception as err:
+            if isinstance(err, HomeAssistantError):
+                raise
+            raise HomeAssistantError(f"Could not set charging current on charger {charger_id}: {err}") from err
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REMOTE_START,
+        async_handle_remote_start,
+        schema=SERVICE_REMOTE_START_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REMOTE_STOP,
+        async_handle_remote_stop,
+        schema=SERVICE_REMOTE_STOP_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_POWER_LIMIT,
+        async_handle_set_power_limit,
+        schema=SERVICE_SET_POWER_LIMIT_SCHEMA,
+    )
 
 # The doubled prefix a pre-fix RoulezElectriqueAccountSensor produced: it set
 # unique_id = f"account_{description.key}", but description.key ALREADY
@@ -51,6 +248,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
     # Store client separately so switch.py can reach it for commands
     hass.data[DOMAIN][f"{entry.entry_id}_client"] = client
+
+    # Register services if not already done
+    if not hass.data[DOMAIN].get("services_registered"):
+        _async_setup_services(hass)
+        hass.data[DOMAIN]["services_registered"] = True
 
     # Must run BEFORE platforms are forwarded: entities are (re)created by
     # async_forward_entry_setups, and a fixed unique_id must already be in the
@@ -120,6 +322,18 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         hass.data[DOMAIN].pop(f"{entry.entry_id}_client", None)
+
+        # If no entries remain, remove services and cleanup DOMAIN dict
+        remaining_entries = [
+            val
+            for val in hass.data.get(DOMAIN, {}).values()
+            if isinstance(val, RoulezElectriqueCoordinator)
+        ]
+        if not remaining_entries:
+            for service in [SERVICE_REMOTE_START, SERVICE_REMOTE_STOP, SERVICE_SET_POWER_LIMIT]:
+                if hass.services.has_service(DOMAIN, service):
+                    hass.services.async_remove(DOMAIN, service)
+            hass.data.pop(DOMAIN, None)
     return unload_ok
 
 

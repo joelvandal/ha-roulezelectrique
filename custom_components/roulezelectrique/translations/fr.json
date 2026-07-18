@@ -174,5 +174,53 @@
         "name": "Courant de charge max"
       }
     }
+  },
+  "services": {
+    "remote_start": {
+      "name": "Démarrage à distance",
+      "description": "Démarre une session de charge à distance sur une borne spécifique.",
+      "fields": {
+        "charger_id": {
+          "name": "Borne de recharge",
+          "description": "La borne de recharge à démarrer."
+        },
+        "connector_id": {
+          "name": "Identifiant du connecteur",
+          "description": "L'identifiant du connecteur sur la borne (OCPP uniquement)."
+        },
+        "id_tag": {
+          "name": "Badge d'identification",
+          "description": "Le badge RFID ou identifiant avec lequel s'autoriser (OCPP uniquement)."
+        }
+      }
+    },
+    "remote_stop": {
+      "name": "Arrêt à distance",
+      "description": "Arrête une session de charge à distance sur une borne spécifique.",
+      "fields": {
+        "charger_id": {
+          "name": "Borne de recharge",
+          "description": "La borne de recharge à arrêter."
+        },
+        "transaction_id": {
+          "name": "Identifiant de la transaction",
+          "description": "L'identifiant de la transaction active à arrêter (OCPP uniquement)."
+        }
+      }
+    },
+    "set_power_limit": {
+      "name": "Définir la limite de puissance",
+      "description": "Définit le courant de charge maximal (ampères) pour une borne spécifique.",
+      "fields": {
+        "charger_id": {
+          "name": "Borne de recharge",
+          "description": "La borne de recharge à configurer."
+        },
+        "amps": {
+          "name": "Limite de courant",
+          "description": "Le courant de charge maximal en ampères."
+        }
+      }
+    }
   }
 }
