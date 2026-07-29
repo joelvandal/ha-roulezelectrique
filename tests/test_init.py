@@ -103,8 +103,9 @@ async def test_async_unload_entry():
     result = await async_unload_entry(hass, entry)
 
     assert result is True
-    assert "test_entry" not in hass.data[DOMAIN]
-    assert "test_entry_client" not in hass.data[DOMAIN]
+    if DOMAIN in hass.data:
+        assert "test_entry" not in hass.data[DOMAIN]
+        assert "test_entry_client" not in hass.data[DOMAIN]
 
 
 @pytest.mark.asyncio
@@ -343,3 +344,93 @@ async def test_full_setup_entry_migrates_legacy_unique_id_before_platforms_forwa
         new_unique_id="account_rewards_total",
     )
     hass.config_entries.async_forward_entry_setups.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_services_registration_and_removal():
+    """Test that services are successfully registered on setup and removed on unload."""
+    from custom_components.roulezelectrique import async_setup_entry, async_unload_entry
+    from custom_components.roulezelectrique.const import DOMAIN
+
+    hass = _make_hass()
+    entry = _make_entry()
+    entry.entry_id = "test_entry"
+
+    # Set up mocks for services
+    services = {}
+    def mock_register(domain, service, func, schema=None):
+        services[(domain, service)] = (func, schema)
+    def mock_remove(domain, service):
+        services.pop((domain, service), None)
+    def mock_has_service(domain, service):
+        return (domain, service) in services
+
+    hass.services.async_register = MagicMock(side_effect=mock_register)
+    hass.services.async_remove = MagicMock(side_effect=mock_remove)
+    hass.services.has_service = MagicMock(side_effect=mock_has_service)
+
+    with (
+        patch(
+            "custom_components.roulezelectrique.async_get_clientsession",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "custom_components.roulezelectrique.RoulezElectriqueCoordinator.async_config_entry_first_refresh",
+            new_callable=AsyncMock,
+        ),
+        patch("custom_components.roulezelectrique.RoulezElectriqueApiClient"),
+        patch(
+            "custom_components.roulezelectrique.er.async_get",
+            return_value=_make_empty_registry(),
+        ),
+        patch(
+            "custom_components.roulezelectrique.er.async_entries_for_config_entry",
+            return_value=[],
+        ),
+    ):
+        await async_setup_entry(hass, entry)
+
+    # Verify services are registered
+    assert (DOMAIN, "remote_start") in services
+    assert (DOMAIN, "remote_stop") in services
+    assert (DOMAIN, "set_power_limit") in services
+
+    # Now unload the entry and verify they are removed
+    await async_unload_entry(hass, entry)
+    assert (DOMAIN, "remote_start") not in services
+    assert (DOMAIN, "remote_stop") not in services
+    assert (DOMAIN, "set_power_limit") not in services
+
+
+def test_resolve_charger_id():
+    """Test resolving device ID or numeric charger ID."""
+    from custom_components.roulezelectrique import _resolve_charger_id
+    from homeassistant.exceptions import HomeAssistantError
+
+    hass = MagicMock()
+
+    # Case 1: Numeric string or int target
+    assert _resolve_charger_id(hass, 123) == 123
+    assert _resolve_charger_id(hass, "456") == 456
+
+    # Case 2: Device ID string resolved via device registry
+    device_registry_mock = MagicMock()
+    device_entry_mock = MagicMock()
+    device_entry_mock.identifiers = {("roulezelectrique", "789")}
+    device_registry_mock.async_get.return_value = device_entry_mock
+
+    with patch("custom_components.roulezelectrique.dr.async_get", return_value=device_registry_mock):
+        assert _resolve_charger_id(hass, "some_device_id_hash") == 789
+
+    # Case 3: Device not found
+    device_registry_mock.async_get.return_value = None
+    with patch("custom_components.roulezelectrique.dr.async_get", return_value=device_registry_mock):
+        with pytest.raises(HomeAssistantError, match="Device 'missing_id' not found"):
+            _resolve_charger_id(hass, "missing_id")
+
+    # Case 4: Device is not a roulezelectrique device
+    device_entry_mock.identifiers = {("other_domain", "789")}
+    device_registry_mock.async_get.return_value = device_entry_mock
+    with patch("custom_components.roulezelectrique.dr.async_get", return_value=device_registry_mock):
+        with pytest.raises(HomeAssistantError, match="Device 'invalid_device' is not a valid"):
+            _resolve_charger_id(hass, "invalid_device")
