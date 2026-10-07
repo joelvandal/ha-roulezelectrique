@@ -84,6 +84,10 @@ class ForbiddenError(RoulezElectriqueError):
     """HTTP 403 — non-OCPP charger or account onboarding gate."""
 
 
+class NotFoundError(RoulezElectriqueError):
+    """HTTP 404 — command or resource not found."""
+
+
 class RoulezElectriqueApiClient:
     """Thin typed client for the Roulez Électrique Home Assistant API."""
 
@@ -134,6 +138,9 @@ class RoulezElectriqueApiClient:
                     raise AuthError("Invalid or revoked API token")
                 if resp.status == 403:
                     raise ForbiddenError("Charger does not support remote control or account not fully set up")
+                if resp.status == 404:
+                    body = await resp.text()
+                    raise NotFoundError(f"Resource not found: {body[:200]}")
                 if resp.status == 409:
                     # 409 is overloaded: every command endpoint uses it for
                     # "borne offline", and max-current adds
@@ -368,18 +375,32 @@ class RoulezElectriqueApiClient:
         terminal status (accepted/rejected/timeout/failed) or COMMAND_TIMEOUT.
 
         Returns the final command dict.
-        Raises ConnectError on timeout (we exceeded COMMAND_TIMEOUT seconds).
+        Raises ConnectError on timeout (we exceeded COMMAND_TIMEOUT seconds), or
+        re-raises the last exception if polling continuously fails.
         """
         deadline = asyncio.get_running_loop().time() + COMMAND_TIMEOUT
+        last_exception: Exception | None = None
         while True:
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
+                if last_exception:
+                    raise last_exception
                 raise ConnectError(
                     f"Command {command_id} did not reach a terminal state within {COMMAND_TIMEOUT}s"
                 )
-            cmd = await self.get_command(command_id)
-            status = cmd.get("status", "")
-            _LOGGER.debug("Command %s status: %s", command_id, status)
-            if status in COMMAND_TERMINAL_STATUSES:
-                return cmd
+            try:
+                cmd = await self.get_command(command_id)
+            except (RoulezElectriqueError, ConnectError) as err:
+                last_exception = err
+                _LOGGER.debug(
+                    "Command %s poll encountered error (will retry): %s",
+                    command_id,
+                    err,
+                )
+            else:
+                last_exception = None
+                status = cmd.get("status", "")
+                _LOGGER.debug("Command %s status: %s", command_id, status)
+                if status in COMMAND_TERMINAL_STATUSES:
+                    return cmd
             await asyncio.sleep(min(COMMAND_POLL_INTERVAL, remaining))
