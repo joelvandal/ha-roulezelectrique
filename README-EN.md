@@ -165,7 +165,7 @@ Your API token can be rotated or revoked at any time from **Profile → Integrat
 
 ## Diagnostics
 
-The integration supports HA's built-in diagnostics download (Settings → Devices & Services → Roulez Électrique → Download diagnostics). The API token is **redacted** from the dump.
+The integration supports HA's built-in diagnostics download (Settings → Devices & Services → Roulez Électrique → Download diagnostics). The dump is **redacted**: the API token, the account identifier, and each charger's name, serial number and VIN are masked. Everything else (status, power, vendor, model, capabilities, reward totals) is kept to make bug reports useful.
 
 ---
 
