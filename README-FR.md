@@ -165,7 +165,7 @@ Votre jeton d'API peut être renouvelé ou révoqué à tout moment depuis **Pro
 
 ## Diagnostics
 
-L'intégration prend en charge le téléchargement des diagnostics intégré à HA (Paramètres → Appareils et services → Roulez Électrique → Télécharger les diagnostics). Le jeton d'API est **caviardé** du fichier.
+L'intégration prend en charge le téléchargement des diagnostics intégré à HA (Paramètres → Appareils et services → Roulez Électrique → Télécharger les diagnostics). Le fichier est **caviardé** : le jeton d'API, l'identifiant du compte, ainsi que le nom, le numéro de série et le NIV de chaque borne y sont masqués. Le reste (statut, puissance, fournisseur, modèle, capacités, totaux de récompenses) est conservé pour faciliter les rapports de bogue.
 
 ---
 
