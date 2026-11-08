@@ -18,7 +18,7 @@
     },
     "error": {
       "invalid_auth": "Jeton API invalide ou révoqué. Vérifiez le jeton dans votre profil.",
-      "cannot_connect": "Impossible de joindre le serveur Club Roulez Électrique. Vérifiez votre connexion Internet.",
+      "cannot_connect": "Impossible de joindre le serveur du Club Roulez Électrique. Vérifiez votre connexion Internet.",
       "invalid_scan_interval": "L'intervalle de mise à jour doit être entre 30 et 900 secondes.",
       "unknown": "Erreur inattendue. Consultez les journaux pour plus de détails."
     },
