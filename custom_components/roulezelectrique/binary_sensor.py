@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from collections.abc import Callable, Hashable
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
@@ -28,8 +29,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import RoulezElectriqueCoordinator
-from .entity import RoulezElectriqueEntity
+from .coordinator import CoordinatorData, RoulezElectriqueCoordinator
+from .entity import RoulezElectriqueEntity, async_add_entities_dynamically
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -93,24 +94,30 @@ async def async_setup_entry(
     """Set up binary sensor entities from a config entry."""
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities: list[RoulezElectriqueBinarySensor] = []
-    charger_map = coordinator.data.chargers if coordinator.data else {}
-    for charger_id, charger_data in charger_map.items():
-        is_ocpp = bool(charger_data.get("is_ocpp"))
-        vendor = charger_data.get("vendor")
-        capabilities = charger_data.get("capabilities", [])
-        for description in BINARY_SENSOR_DESCRIPTIONS:
-            if description.ocpp_only and not is_ocpp:
-                continue  # Skip OCPP-only sensors for non-OCPP chargers
-            if description.vendors and vendor not in description.vendors:
-                continue  # Skip vendor-restricted sensors for other vendors
-            if description.capability and description.capability not in capabilities:
-                continue  # Skip capability-gated sensors the server didn't declare
-            entities.append(
-                RoulezElectriqueBinarySensor(coordinator, charger_id, description)
-            )
+    def _build(data: CoordinatorData) -> list[tuple[Hashable, Callable[[], Any]]]:
+        found: list[tuple[Hashable, Callable[[], Any]]] = []
+        for charger_id, charger_data in data.chargers.items():
+            is_ocpp = bool(charger_data.get("is_ocpp"))
+            vendor = charger_data.get("vendor")
+            capabilities = charger_data.get("capabilities", [])
+            for description in BINARY_SENSOR_DESCRIPTIONS:
+                if description.ocpp_only and not is_ocpp:
+                    continue  # Skip OCPP-only sensors for non-OCPP chargers
+                if description.vendors and vendor not in description.vendors:
+                    continue  # Skip vendor-restricted sensors for other vendors
+                if description.capability and description.capability not in capabilities:
+                    continue  # Skip capability-gated sensors the server didn't declare
+                found.append(
+                    (
+                        (charger_id, description.key),
+                        lambda cid=charger_id, d=description: RoulezElectriqueBinarySensor(
+                            coordinator, cid, d
+                        ),
+                    )
+                )
+        return found
 
-    async_add_entities(entities)
+    async_add_entities_dynamically(entry, coordinator, async_add_entities, _build)
 
 
 class RoulezElectriqueBinarySensor(RoulezElectriqueEntity, BinarySensorEntity):

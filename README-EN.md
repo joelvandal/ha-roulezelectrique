@@ -19,6 +19,8 @@ One HA **device per charger**, plus one **Account** device for program-level sta
 
 Control availability is decided **server-side** (the platform's `controllable` / `current_limit_controllable` flags): an OCPP charger must be online (live WebSocket), and cloud vendors (Wallbox, IYILO, Sigenergy AC and DC, Tesla) need an active linked account (Tesla also needs the remote-control consent, see below). When control is temporarily unavailable, the entity exists but shows as *unavailable* — it never fails silently.
 
+**New in v0.11.1:** new controls (start/stop, max current) appear automatically when the server adds them for a charger, or when a charger is added to the account, with no reload of the integration.
+
 **New in v0.11.0:** the integration is now called **Club Roulez Électrique** and uses the official Club logo and leaf icon. Name and images only: no functional change.
 
 **New in v0.10.1:** the "Max current (EVduty)" slider now works during a charge in progress (it used to be refused), and the charger is no longer rebooted. Going above the installation value still requires the confirmation in the app or dashboard.

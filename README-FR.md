@@ -19,6 +19,8 @@ Un appareil HA **par borne**, plus un appareil **Compte** pour les statistiques 
 
 La disponibilité du contrôle est décidée **côté serveur** (les indicateurs `controllable` / `current_limit_controllable` de la plateforme) : une borne OCPP doit être en ligne (WebSocket actif), et les vendeurs infonuagiques (Wallbox, IYILO, Sigenergy AC et DC, Tesla) nécessitent un compte lié actif (Tesla exige aussi le consentement au contrôle à distance, voir plus bas). Quand le contrôle est temporairement indisponible, l'entité existe mais s'affiche comme *indisponible* — elle n'échoue jamais silencieusement.
 
+**Nouveau (v0.11.1) :** les nouveaux contrôles (démarrer/arrêter, courant maximal) apparaissent automatiquement quand le serveur les ajoute pour une borne, ou quand une borne est ajoutée au compte, sans recharger l'intégration.
+
 **Nouveau (v0.11.0) :** l'intégration s'appelle maintenant **Club Roulez Électrique** et utilise le logo officiel du Club ainsi que sa feuille comme icône. Changement de nom et d'images seulement : aucune modification fonctionnelle.
 
 **Nouveau (v0.10.1) :** le curseur « Courant max (EVduty) » fonctionne maintenant pendant une recharge en cours (il était refusé jusque-là) ; la borne n'est plus redémarrée. Pour dépasser la valeur d'installation, la confirmation reste requise dans l'application ou le tableau de bord.

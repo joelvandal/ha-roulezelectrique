@@ -35,6 +35,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
+from collections.abc import Callable, Hashable
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -64,7 +65,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import CoordinatorData, RoulezElectriqueCoordinator
-from .entity import RoulezElectriqueEntity
+from .entity import RoulezElectriqueEntity, async_add_entities_dynamically
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -569,43 +570,53 @@ async def async_setup_entry(
     """Set up sensor entities from a config entry."""
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities: list[RoulezElectriqueSensor | RoulezElectriqueAccountSensor] = []
-
-    # Per-charger sensors.
-    #
-    # The original six (LEGACY_SENSOR_KEYS) are ALWAYS created, for every
-    # charger, regardless of `capabilities` — see the comment on
-    # LEGACY_SENSOR_KEYS. This is required for registry compatibility with
-    # every published <=0.3.x install, which created them unconditionally.
-    #
-    # Every OTHER sensor is gated on the server's per-charger `capabilities`
-    # list, so it is created up front even behind a cold cache (rather than
-    # hidden until the first non-null read). An older server that omits
-    # `capabilities` entirely never gets these new sensors at all.
-    charger_map = coordinator.data.chargers if coordinator.data else {}
-    for charger_id, charger_data in charger_map.items():
-        capabilities = charger_data.get("capabilities")
-        for description in SENSOR_DESCRIPTIONS:
-            if description.key in LEGACY_SENSOR_KEYS:
-                entities.append(
-                    RoulezElectriqueSensor(coordinator, charger_id, description)
+    def _build(data: CoordinatorData) -> list[tuple[Hashable, Callable[[], Any]]]:
+        found: list[tuple[Hashable, Callable[[], Any]]] = []
+        # Per-charger sensors.
+        #
+        # The original six (LEGACY_SENSOR_KEYS) are ALWAYS created, for every
+        # charger, regardless of `capabilities` — see the comment on
+        # LEGACY_SENSOR_KEYS. This is required for registry compatibility with
+        # every published <=0.3.x install, which created them unconditionally.
+        #
+        # Every OTHER sensor is gated on the server's per-charger `capabilities`
+        # list. An older server that omits `capabilities` entirely never gets
+        # these new sensors at all. Re-evaluated on every poll (0.11.1+): a
+        # charger added later, or a capability declared later, gets its sensors
+        # with no reload.
+        for charger_id, charger_data in data.chargers.items():
+            capabilities = charger_data.get("capabilities")
+            for description in SENSOR_DESCRIPTIONS:
+                if description.key not in LEGACY_SENSOR_KEYS:
+                    if capabilities is None:
+                        continue
+                    if (
+                        description.capability is not None
+                        and description.capability not in capabilities
+                    ):
+                        continue
+                found.append(
+                    (
+                        (charger_id, description.key),
+                        lambda cid=charger_id, d=description: RoulezElectriqueSensor(
+                            coordinator, cid, d
+                        ),
+                    )
                 )
-                continue
-            if capabilities is None:
-                continue
-            if description.capability is not None and description.capability not in capabilities:
-                continue
-            entities.append(
-                RoulezElectriqueSensor(coordinator, charger_id, description)
-            )
 
-    # Account-level sensors (one "Account" device) — only when the server
-    # returns the account block. Tolerates an older server that omits it.
-    if coordinator.data and coordinator.data.account is not None:
-        for description in ACCOUNT_SENSOR_DESCRIPTIONS:
-            entities.append(RoulezElectriqueAccountSensor(coordinator, description))
+        # Account-level sensors (one "Account" device) — only when the server
+        # returns the account block. Tolerates an older server that omits it.
+        if data.account is not None:
+            for description in ACCOUNT_SENSOR_DESCRIPTIONS:
+                found.append(
+                    (
+                        ("account", description.key),
+                        lambda d=description: RoulezElectriqueAccountSensor(coordinator, d),
+                    )
+                )
+        return found
 
-    async_add_entities(entities)
+    async_add_entities_dynamically(entry, coordinator, async_add_entities, _build)
 
 
 class RoulezElectriqueSensor(RoulezElectriqueEntity, SensorEntity):

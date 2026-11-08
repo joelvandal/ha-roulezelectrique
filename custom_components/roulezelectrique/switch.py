@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable, Hashable
 from typing import Any
 
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
@@ -75,8 +76,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import ConnectError, OfflineError, RateLimitedError, RoulezElectriqueApiClient
 from .const import DOMAIN
-from .coordinator import RoulezElectriqueCoordinator
-from .entity import RoulezElectriqueEntity
+from .coordinator import CoordinatorData, RoulezElectriqueCoordinator
+from .entity import RoulezElectriqueEntity, async_add_entities_dynamically
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,58 +91,76 @@ async def async_setup_entry(
 
     Controllable-capable chargers (OCPP, Wallbox, AVE or Sigenergy AC/DC) and
     any charger the server reports `controllable` (Tesla) get a charge switch.
-    Wallbox bornes additionally get a lock switch. Other chargers are skipped.
+    Wallbox bornes additionally get a lock switch. Other chargers are skipped
+    until a later poll reports them controllable (0.11.1+: no reload needed).
     """
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
     client: RoulezElectriqueApiClient = hass.data[DOMAIN][f"{entry.entry_id}_client"]
 
-    entities: list[RoulezElectriqueEntity] = []
-    charger_map = coordinator.data.chargers if coordinator.data else {}
-    for charger_id, charger_data in charger_map.items():
-        # Create a switch for any controllable-capable vendor. We gate on the
-        # stable vendor (OCPP, Wallbox, AVE or Sigenergy) rather than the live
-        # `controllable` flag so the entity exists even while temporarily
-        # uncontrollable (offline OCPP / inactive account) — `available`
-        # reflects that at runtime. Any OTHER charger (Tesla, 0.10.0+) is
-        # driven by the server's own `controllable` flag at setup time rather
-        # than a hardcoded vendor, so a Tesla without remote-control consent
-        # gets no switch and a future controllable vendor needs no client
-        # change. Sigenergy covers both the AC and
-        # DC vendor_label variants — both use the same `vendor == "sigenergy"`
-        # string and the same synchronous remote-start/remote-stop calls (the
-        # server branches AC vs DC internally).
-        is_wallbox = charger_data.get("vendor") == "wallbox"
-        is_ave = charger_data.get("vendor") == "ave"
-        is_sigenergy = charger_data.get("vendor") == "sigenergy"
+    def _build(data: CoordinatorData) -> list[tuple[Hashable, Callable[[], Any]]]:
+        found: list[tuple[Hashable, Callable[[], Any]]] = []
+        for charger_id, charger_data in data.chargers.items():
+            # Charge switch for any controllable-capable vendor. We gate on the
+            # stable vendor (OCPP, Wallbox, AVE or Sigenergy) rather than the live
+            # `controllable` flag so the entity exists even while temporarily
+            # uncontrollable (offline OCPP / inactive account) — `available`
+            # reflects that at runtime. Any OTHER charger (Tesla, 0.10.0+, and
+            # since 0.11.1 any vendor the server newly makes controllable) is
+            # driven by the server's own `controllable` flag rather than a
+            # hardcoded vendor. The check is re-run on EVERY poll (0.11.1+), so
+            # a charger that becomes controllable later gets its switch with no
+            # reload. Sigenergy covers both the AC and DC vendor_label variants
+            # — same `vendor == "sigenergy"` string, same synchronous
+            # remote-start/remote-stop calls (the server branches AC vs DC).
+            is_wallbox = charger_data.get("vendor") == "wallbox"
+            is_ave = charger_data.get("vendor") == "ave"
+            is_sigenergy = charger_data.get("vendor") == "sigenergy"
 
-        # Plug & Charge switch: gated on the capability string, checked
-        # BEFORE the controllable-capable `continue` below so it is never
-        # accidentally skipped — in practice only IYILO ("ave") ever carries
-        # this capability, and IYILO is always controllable-capable, but the
-        # capability is the source of truth, not the vendor check.
-        if "plug_and_charge" in charger_data.get("capabilities", []):
-            entities.append(
-                RoulezElectriquePlugAndChargeSwitch(coordinator, client, charger_id)
+            # Plug & Charge switch: gated on the capability string, checked
+            # BEFORE the controllable-capable `continue` below so it is never
+            # accidentally skipped — in practice only IYILO ("ave") ever carries
+            # this capability, but the capability is the source of truth.
+            if "plug_and_charge" in charger_data.get("capabilities", []):
+                found.append(
+                    (
+                        (charger_id, "plug_and_charge"),
+                        lambda cid=charger_id: RoulezElectriquePlugAndChargeSwitch(
+                            coordinator, client, cid
+                        ),
+                    )
+                )
+
+            if not (
+                charger_data.get("is_ocpp")
+                or is_wallbox
+                or is_ave
+                or is_sigenergy
+                or charger_data.get("controllable")
+            ):
+                _LOGGER.debug(
+                    "Charger %s is not controllable-capable — no switch entity created",
+                    charger_id,
+                )
+                continue
+            found.append(
+                (
+                    (charger_id, "charge"),
+                    lambda cid=charger_id: RoulezElectriqueSwitch(coordinator, client, cid),
+                )
             )
+            # Lock switch is Wallbox-only (OCPP/AVE/Sigenergy have no lock concept).
+            if is_wallbox:
+                found.append(
+                    (
+                        (charger_id, "lock"),
+                        lambda cid=charger_id: RoulezElectriqueLockSwitch(
+                            coordinator, client, cid
+                        ),
+                    )
+                )
+        return found
 
-        if not (
-            charger_data.get("is_ocpp")
-            or is_wallbox
-            or is_ave
-            or is_sigenergy
-            or charger_data.get("controllable")
-        ):
-            _LOGGER.debug(
-                "Charger %s is not controllable-capable — no switch entity created",
-                charger_id,
-            )
-            continue
-        entities.append(RoulezElectriqueSwitch(coordinator, client, charger_id))
-        # Lock switch is Wallbox-only (OCPP/AVE/Sigenergy have no lock concept).
-        if is_wallbox:
-            entities.append(RoulezElectriqueLockSwitch(coordinator, client, charger_id))
-
-    async_add_entities(entities)
+    async_add_entities_dynamically(entry, coordinator, async_add_entities, _build)
 
 
 class RoulezElectriqueSwitch(RoulezElectriqueEntity, SwitchEntity):

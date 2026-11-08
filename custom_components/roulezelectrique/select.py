@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable, Hashable
 from typing import Any
 
 from homeassistant.components.select import SelectEntity
@@ -42,8 +43,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import ConnectError, OfflineError, RateLimitedError, RoulezElectriqueApiClient
 from .const import DOMAIN
-from .coordinator import RoulezElectriqueCoordinator
-from .entity import RoulezElectriqueEntity
+from .coordinator import CoordinatorData, RoulezElectriqueCoordinator
+from .entity import RoulezElectriqueEntity, async_add_entities_dynamically
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,20 +59,26 @@ async def async_setup_entry(
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
     client: RoulezElectriqueApiClient = hass.data[DOMAIN][f"{entry.entry_id}_client"]
 
-    entities: list[RoulezElectriqueEntity] = []
-    charger_map = coordinator.data.chargers if coordinator.data else {}
-    for charger_id, charger_data in charger_map.items():
-        if "time_zone" in charger_data.get("capabilities", []):
-            entities.append(
-                RoulezElectriqueTimeZoneSelect(coordinator, client, charger_id)
-            )
-        else:
-            _LOGGER.debug(
-                "Charger %s does not support time-zone control — no select entity created",
-                charger_id,
-            )
+    def _build(data: CoordinatorData) -> list[tuple[Hashable, Callable[[], Any]]]:
+        found: list[tuple[Hashable, Callable[[], Any]]] = []
+        for charger_id, charger_data in data.chargers.items():
+            if "time_zone" in charger_data.get("capabilities", []):
+                found.append(
+                    (
+                        (charger_id, "time_zone"),
+                        lambda cid=charger_id: RoulezElectriqueTimeZoneSelect(
+                            coordinator, client, cid
+                        ),
+                    )
+                )
+            else:
+                _LOGGER.debug(
+                    "Charger %s does not support time-zone control — no select entity created",
+                    charger_id,
+                )
+        return found
 
-    async_add_entities(entities)
+    async_add_entities_dynamically(entry, coordinator, async_add_entities, _build)
 
 
 class RoulezElectriqueTimeZoneSelect(RoulezElectriqueEntity, SelectEntity):

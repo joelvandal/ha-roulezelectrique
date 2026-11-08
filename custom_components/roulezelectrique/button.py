@@ -30,6 +30,9 @@ switch/number write paths, and unlike Reboot below.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Hashable
+from typing import Any
+
 import logging
 
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
@@ -41,8 +44,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import ConnectError, OfflineError, RateLimitedError, RoulezElectriqueApiClient
 from .const import DOMAIN
-from .coordinator import RoulezElectriqueCoordinator
-from .entity import RoulezElectriqueEntity
+from .coordinator import CoordinatorData, RoulezElectriqueCoordinator
+from .entity import RoulezElectriqueEntity, async_add_entities_dynamically
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,17 +61,27 @@ async def async_setup_entry(
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
     client: RoulezElectriqueApiClient = hass.data[DOMAIN][f"{entry.entry_id}_client"]
 
-    charger_map = coordinator.data.chargers if coordinator.data else {}
-    entities: list[RoulezElectriqueEntity] = [
-        RoulezElectriqueRefreshButton(coordinator, charger_id)
-        for charger_id in charger_map
-    ]
-    for charger_id, charger_data in charger_map.items():
-        if "reboot" in charger_data.get("capabilities", []):
-            entities.append(
-                RoulezElectriqueRebootButton(coordinator, client, charger_id)
+    def _build(data: CoordinatorData) -> list[tuple[Hashable, Callable[[], Any]]]:
+        found: list[tuple[Hashable, Callable[[], Any]]] = []
+        for charger_id, charger_data in data.chargers.items():
+            found.append(
+                (
+                    (charger_id, "refresh"),
+                    lambda cid=charger_id: RoulezElectriqueRefreshButton(coordinator, cid),
+                )
             )
-    async_add_entities(entities)
+            if "reboot" in charger_data.get("capabilities", []):
+                found.append(
+                    (
+                        (charger_id, "reboot"),
+                        lambda cid=charger_id: RoulezElectriqueRebootButton(
+                            coordinator, client, cid
+                        ),
+                    )
+                )
+        return found
+
+    async_add_entities_dynamically(entry, coordinator, async_add_entities, _build)
 
 
 class RoulezElectriqueRefreshButton(RoulezElectriqueEntity, ButtonEntity):

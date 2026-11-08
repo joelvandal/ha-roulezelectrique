@@ -10,13 +10,52 @@ binary_sensor, switch) inherit from RoulezElectriqueEntity and share:
 
 from __future__ import annotations
 
+from collections.abc import Callable, Hashable
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import RoulezElectriqueCoordinator
+from .coordinator import CoordinatorData, RoulezElectriqueCoordinator
+
+
+def async_add_entities_dynamically(
+    entry: ConfigEntry,
+    coordinator: RoulezElectriqueCoordinator,
+    async_add_entities: AddEntitiesCallback,
+    build: Callable[[CoordinatorData], list[tuple[Hashable, Callable[[], Any]]]],
+) -> None:
+    """Add entities now, then again whenever a later poll makes new ones eligible.
+
+    `build` inspects the coordinator data and returns (key, factory) pairs for
+    every entity that is eligible RIGHT NOW (same creation conditions as the
+    original setup-time code). Keys already added are remembered, so each
+    entity is created exactly once no matter how many polls report it.
+    Nothing is ever removed: an entity whose charger stops being eligible just
+    goes unavailable through its own `available` property.
+    """
+    added: set[Hashable] = set()
+
+    @callback
+    def _add_new() -> None:
+        if coordinator.data is None:
+            return
+        new = [
+            (key, factory)
+            for key, factory in build(coordinator.data)
+            if key not in added
+        ]
+        if not new:
+            return
+        added.update(key for key, _ in new)
+        async_add_entities([factory() for _, factory in new])
+
+    _add_new()
+    entry.async_on_unload(coordinator.async_add_listener(_add_new))
 
 
 class RoulezElectriqueEntity(CoordinatorEntity[RoulezElectriqueCoordinator]):
