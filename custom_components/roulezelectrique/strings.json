@@ -2,14 +2,14 @@
   "config": {
     "step": {
       "user": {
-        "title": "Roulez Électrique — Connexion",
+        "title": "Club Roulez Électrique — Connexion",
         "description": "Pour obtenir votre jeton d'accès, ouvrez votre compte sur **{base_url}**, puis allez dans **Profil → Intégrations → Home Assistant** et cliquez sur Activer. Copiez le jeton affiché et collez-le ci-dessous.",
         "data": {
           "api_token": "Jeton API"
         }
       },
       "reauth_confirm": {
-        "title": "Réauthentification Roulez Électrique",
+        "title": "Réauthentification Club Roulez Électrique",
         "description": "Votre jeton API a été révoqué ou a expiré. Générez un nouveau jeton dans **Profil → Intégrations → Home Assistant** ({base_url}) et collez-le ci-dessous.",
         "data": {
           "api_token": "Nouveau jeton API"
@@ -18,7 +18,7 @@
     },
     "error": {
       "invalid_auth": "Jeton API invalide ou révoqué. Vérifiez le jeton dans votre profil.",
-      "cannot_connect": "Impossible de joindre le serveur Roulez Électrique. Vérifiez votre connexion Internet.",
+      "cannot_connect": "Impossible de joindre le serveur Club Roulez Électrique. Vérifiez votre connexion Internet.",
       "invalid_scan_interval": "L'intervalle de mise à jour doit être entre 30 et 900 secondes.",
       "unknown": "Erreur inattendue. Consultez les journaux pour plus de détails."
     },
@@ -30,7 +30,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Options de Roulez Électrique",
+        "title": "Options de Club Roulez Électrique",
         "data": {
           "scan_interval": "Intervalle de mise à jour (secondes)"
         }

@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique binary_sensor platform.
+"""Tests for the Club Roulez Électrique binary_sensor platform.
 
 Covers:
   - online/charging created for every vendor

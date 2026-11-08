@@ -1,4 +1,4 @@
-"""Number platform for the Roulez Électrique integration.
+"""Number platform for the Club Roulez Électrique integration.
 
 Exposes the max charging current (amps) as a slider for bornes that support
 current-limit control:

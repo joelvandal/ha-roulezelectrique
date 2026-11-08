@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique sensor platform."""
+"""Tests for the Club Roulez Électrique sensor platform."""
 
 from __future__ import annotations
 

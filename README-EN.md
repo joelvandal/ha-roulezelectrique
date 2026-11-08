@@ -1,6 +1,6 @@
-# Roulez Électrique — Home Assistant Integration
+# Club Roulez Électrique — Home Assistant Integration
 
-Connect your [Roulez Électrique](https://roulezelectrique.club) EV chargers to Home Assistant: live telemetry for every charger in your account, plus remote control (start/stop, charging-current limit, lock) for the vendors that support it.
+Connect your [Club Roulez Électrique](https://roulezelectrique.club) EV chargers to Home Assistant: live telemetry for every charger in your account, plus remote control (start/stop, charging-current limit, lock) for the vendors that support it.
 
 ---
 
@@ -18,6 +18,8 @@ One HA **device per charger**, plus one **Account** device for program-level sta
 | **Sigenergy DC** (linked account) | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
 
 Control availability is decided **server-side** (the platform's `controllable` / `current_limit_controllable` flags): an OCPP charger must be online (live WebSocket), and cloud vendors (Wallbox, IYILO, Sigenergy AC and DC, Tesla) need an active linked account (Tesla also needs the remote-control consent, see below). When control is temporarily unavailable, the entity exists but shows as *unavailable* — it never fails silently.
+
+**New in v0.11.0:** the integration is now called **Club Roulez Électrique** and uses the official Club logo and leaf icon. Name and images only: no functional change.
 
 **New in v0.10.1:** the "Max current (EVduty)" slider now works during a charge in progress (it used to be refused), and the charger is no longer rebooted. Going above the installation value still requires the confirmation in the app or dashboard.
 
@@ -86,7 +88,7 @@ Telemetry sensors (power, energy, current, voltage, temperature, battery level, 
 - **Plug & Charge switch** — **new in v0.9.0, IYILO only.** Turns the borne's Plug & Charge setting on/off. Filed under the device's Configuration section (a setting, not a primary charge control).
 - **Time zone** (select) — **new in v0.9.0, IYILO only.** Shows and sets the borne's configured time zone. The list of choices comes from the platform; if the borne is currently set to a time zone the platform doesn't offer as a choice, that value is still shown (never silently swapped for something else) — you just can't pick it again from the list unless the platform starts offering it. Filed under Configuration.
 - **Reboot** (button) — **new in v0.9.0, IYILO only.** Power-cycles the physical charger and **interrupts any charging session in progress** — this is a real, disruptive action, not a diagnostic refresh. Home Assistant does not ask for confirmation before running a button press, and a button can also be fired by a script, an automation or a voice assistant. It is therefore **disabled by default**: find it under the device's Configuration section, open it and enable it once, deliberately, before it can be pressed at all. It is **not** blocked while a session is running — a borne stuck in a phantom session is exactly when you need to restart it.
-- **Refresh** (button) — **new.** Every charger. Press it to force an immediate re-check of the server's data — the only entity in this integration that never depends on `controllable`/vendor and is always available. Useful for a change made outside Home Assistant (e.g. from the Roulez Électrique mobile app), which otherwise only shows up in HA on the next scheduled poll (see **Update interval** below). Home Assistant Core's built-in "Update entity" action (`homeassistant.update_entity`, available from the entity's more-info dialog or in automations/scripts) does the exact same thing and works too — this button is simply a one-tap shortcut for it from the companion app.
+- **Refresh** (button) — **new.** Every charger. Press it to force an immediate re-check of the server's data — the only entity in this integration that never depends on `controllable`/vendor and is always available. Useful for a change made outside Home Assistant (e.g. from the Club Roulez Électrique mobile app), which otherwise only shows up in HA on the next scheduled poll (see **Update interval** below). Home Assistant Core's built-in "Update entity" action (`homeassistant.update_entity`, available from the entity's more-info dialog or in automations/scripts) does the exact same thing and works too — this button is simply a one-tap shortcut for it from the companion app.
 
 All three IYILO settings above (Plug & Charge, time zone, reboot) go *unavailable* together whenever settings on that borne aren't controllable right now (an inactive IYILO account or a retired borne) — a separate condition from the charge switch's own availability, since a borne can be reachable for charging control while its settings are not.
 
@@ -108,7 +110,7 @@ Use each charger's **Lifetime energy** sensor as the source when adding a charge
 ## Requirements
 
 - Home Assistant **2024.11.0** or later
-- A Roulez Électrique account at [roulezelectrique.club](https://roulezelectrique.club)
+- A Club Roulez Électrique account at [roulezelectrique.club](https://roulezelectrique.club)
 - An API token from your profile (see Setup)
 
 ---
@@ -121,7 +123,7 @@ Use each charger's **Lifetime energy** sensor as the source when adding a charge
    - HACS → Integrations → ⋮ → Custom repositories
    - URL: `https://github.com/joelvandal/ha-roulezelectrique`
    - Category: Integration
-2. Search for "Roulez Électrique" and install.
+2. Search for "Club Roulez Électrique" and install.
 3. Restart Home Assistant.
 
 ### Manual
@@ -142,7 +144,7 @@ Use each charger's **Lifetime energy** sensor as the source when adding a charge
 ### Step 2 — Add the integration in HA
 
 1. Settings → Devices & Services → Add Integration.
-2. Search for "Roulez Électrique".
+2. Search for "Club Roulez Électrique".
 3. Paste your API token and click Submit — that's it (the platform URL is built in).
 
 Your chargers appear as HA devices within a few seconds. The UI is available in **French and English**.
@@ -153,7 +155,7 @@ Your chargers appear as HA devices within a few seconds. The UI is available in 
 
 After setup, open the integration's settings to adjust:
 
-- **Update interval** (30–900 seconds, default 30): how often HA polls for new data. The integration backs off automatically if the server rate-limits it. This is also the only thing that ever picks up a change made outside Home Assistant (e.g. from the Roulez Électrique mobile app) — see the **Refresh** button below for a way to force a check immediately instead of waiting.
+- **Update interval** (30–900 seconds, default 30): how often HA polls for new data. The integration backs off automatically if the server rate-limits it. This is also the only thing that ever picks up a change made outside Home Assistant (e.g. from the Club Roulez Électrique mobile app) — see the **Refresh** button below for a way to force a check immediately instead of waiting.
 
 ---
 
@@ -165,11 +167,13 @@ Your API token can be rotated or revoked at any time from **Profile → Integrat
 
 ## Diagnostics
 
-The integration supports HA's built-in diagnostics download (Settings → Devices & Services → Roulez Électrique → Download diagnostics). The dump is **redacted**: the API token, the account identifier, and each charger's name, serial number and VIN are masked. Everything else (status, power, vendor, model, capabilities, reward totals) is kept to make bug reports useful.
+The integration supports HA's built-in diagnostics download (Settings → Devices & Services → Club Roulez Électrique → Download diagnostics). The dump is **redacted**: the API token, the account identifier, and each charger's name, serial number and VIN are masked. Everything else (status, power, vendor, model, capabilities, reward totals) is kept to make bug reports useful.
 
 ---
 
 ## Upgrading
+
+- **From v0.10.x:** renamed to **Club Roulez Électrique**, with the official Club logo and leaf icon. Nothing to redo: your entities, their history, dashboards and automations are unchanged (entity IDs are kept). The account device is renamed to "Club Roulez Électrique" automatically on the next reload; a device you renamed yourself keeps your name. The display names of the account entities follow the device name, but their IDs do not change. The integration's title in Settings → Devices & Services keeps its old text for existing installs; only new setups get the new title.
 
 - **From v0.2.4 or earlier:** the account-level sensors (rewards, invitations, lifetime energy, charger count) had a duplicated internal ID that is corrected automatically the first time the integration reloads after upgrading — your existing entities, their history, and any dashboards/automations referencing them are preserved (no re-adding, no new entity).
 - **From v0.3.x:** new per-charger sensors (Lifetime energy, Lifetime sessions, Temperature, Battery level, Measured current, Last connection, Session start, Charging speed, Added range, Connection type, VIN) appear automatically on the first reload for every charger whose vendor can report them — no re-adding, no configuration change needed. Existing entity IDs are untouched, but the account-level **Lifetime energy** sensor's state class changes from `total_increasing` to `total` (it can now be corrected downward, e.g. after a data cleanup, without Home Assistant misreading that as a meter reset). Home Assistant may log a one-time "statistics metadata changed" notice for that sensor when this happens — this is expected and harmless; its long-term statistics and history keep working normally.

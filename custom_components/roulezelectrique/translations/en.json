@@ -2,14 +2,14 @@
   "config": {
     "step": {
       "user": {
-        "title": "Roulez Électrique — Connect",
+        "title": "Club Roulez Électrique — Connect",
         "description": "To get your access token, sign in at **{base_url}**, then go to **Profile → Integrations → Home Assistant** and click Activate. Copy the token shown and paste it below.",
         "data": {
           "api_token": "API Token"
         }
       },
       "reauth_confirm": {
-        "title": "Re-authenticate Roulez Électrique",
+        "title": "Re-authenticate Club Roulez Électrique",
         "description": "Your API token has been revoked or expired. Generate a new token at **Profile → Integrations → Home Assistant** ({base_url}) and paste it below.",
         "data": {
           "api_token": "New API Token"
@@ -18,7 +18,7 @@
     },
     "error": {
       "invalid_auth": "Invalid or revoked API token. Please check the token in your profile.",
-      "cannot_connect": "Cannot reach the Roulez Électrique server. Check your internet connection.",
+      "cannot_connect": "Cannot reach the Club Roulez Électrique server. Check your internet connection.",
       "invalid_scan_interval": "The update interval must be between 30 and 900 seconds.",
       "unknown": "Unexpected error. Check the logs for details."
     },
@@ -30,7 +30,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Roulez Électrique Options",
+        "title": "Club Roulez Électrique Options",
         "data": {
           "scan_interval": "Update interval (seconds)"
         }

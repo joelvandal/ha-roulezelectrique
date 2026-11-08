@@ -1,4 +1,4 @@
-"""Async API client for the Roulez Électrique platform.
+"""Async API client for the Club Roulez Électrique platform.
 
 Uses HA's bundled aiohttp session (async_get_clientsession) — no extra pip deps.
 
@@ -86,7 +86,7 @@ class ForbiddenError(RoulezElectriqueError):
 
 
 class RoulezElectriqueApiClient:
-    """Thin typed client for the Roulez Électrique Home Assistant API."""
+    """Thin typed client for the Club Roulez Électrique Home Assistant API."""
 
     def __init__(
         self,

@@ -1,4 +1,4 @@
-"""Sensor platform for the Roulez Électrique integration.
+"""Sensor platform for the Club Roulez Électrique integration.
 
 One device per charger; sensors per charger:
   - Power (kW)                device_class=power,      state_class=measurement
@@ -829,7 +829,7 @@ class RoulezElectriqueAccountSensor(
         self._attr_unique_id = description.key
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, "account")},
-            name="Roulez Électrique",
+            name="Club Roulez Électrique",
             model="Account",
         )
 

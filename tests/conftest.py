@@ -1,4 +1,4 @@
-"""Shared fixtures for Roulez Électrique integration tests."""
+"""Shared fixtures for Club Roulez Électrique integration tests."""
 
 from __future__ import annotations
 

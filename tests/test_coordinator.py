@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique coordinator."""
+"""Tests for the Club Roulez Électrique coordinator."""
 
 from __future__ import annotations
 

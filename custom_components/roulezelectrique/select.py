@@ -1,4 +1,4 @@
-"""Select platform for the Roulez Électrique integration.
+"""Select platform for the Club Roulez Électrique integration.
 
 One entity: the IYILO time-zone select. IYILO-only (server capability
 "time_zone"; IYILO is the vendor this repo calls "ave" on the wire, same as

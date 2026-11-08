@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique config flow."""
+"""Tests for the Club Roulez Électrique config flow."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique select platform (IYILO time zone).
+"""Tests for the Club Roulez Électrique select platform (IYILO time zone).
 
 Covers:
   - the time-zone select is created only for chargers whose `capabilities`

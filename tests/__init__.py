@@ -1,1 +1,1 @@
-# Tests for the Roulez Électrique Home Assistant custom integration.
+# Tests for the Club Roulez Électrique Home Assistant custom integration.

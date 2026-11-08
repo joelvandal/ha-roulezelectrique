@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique integration setup / teardown."""
+"""Tests for the Club Roulez Électrique integration setup / teardown."""
 
 from __future__ import annotations
 

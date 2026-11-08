@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for the Roulez Électrique integration.
+"""DataUpdateCoordinator for the Club Roulez Électrique integration.
 
 One GET /api/v1/home-assistant/state call per refresh interval. The result is
 stored as a CoordinatorData object holding:
@@ -56,7 +56,7 @@ class CoordinatorData:
 
 
 class RoulezElectriqueCoordinator(DataUpdateCoordinator[CoordinatorData]):
-    """Coordinator that polls the Roulez Électrique state endpoint.
+    """Coordinator that polls the Club Roulez Électrique state endpoint.
 
     Data shape: CoordinatorData with .chargers (dict[int, dict]) and
     .account (dict | None).
@@ -100,7 +100,7 @@ class RoulezElectriqueCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.update_interval = timedelta(seconds=err.retry_after)
             raise UpdateFailed(f"Rate limited by server: {err}") from err
         except ConnectError as err:
-            raise UpdateFailed(f"Cannot reach Roulez Électrique API: {err}") from err
+            raise UpdateFailed(f"Cannot reach Club Roulez Électrique API: {err}") from err
         except Exception as err:  # noqa: BLE001
             raise UpdateFailed(f"Unexpected error from API: {err}") from err
 

@@ -1,8 +1,8 @@
-# Roulez Électrique — Intégration Home Assistant / Home Assistant Integration
+# Club Roulez Électrique — Intégration Home Assistant / Home Assistant Integration
 
-Connectez vos bornes de recharge [Roulez Électrique](https://roulezelectrique.club) à Home Assistant : télémétrie en direct, plus le contrôle à distance (démarrer/arrêter, limite de courant, verrou) pour les vendeurs qui le permettent.
+Connectez vos bornes de recharge [Club Roulez Électrique](https://roulezelectrique.club) à Home Assistant : télémétrie en direct, plus le contrôle à distance (démarrer/arrêter, limite de courant, verrou) pour les vendeurs qui le permettent.
 
-Connect your [Roulez Électrique](https://roulezelectrique.club) EV chargers to Home Assistant: live telemetry, plus remote control (start/stop, current limit, lock) for the vendors that support it.
+Connect your [Club Roulez Électrique](https://roulezelectrique.club) EV chargers to Home Assistant: live telemetry, plus remote control (start/stop, current limit, lock) for the vendors that support it.
 
 **📖 Documentation complète / Full documentation:**
 
@@ -10,6 +10,8 @@ Connect your [Roulez Électrique](https://roulezelectrique.club) EV chargers to 
 - 🇬🇧 **[README-EN.md](README-EN.md)** — installation, setup, entities, limitations, upgrading
 
 ---
+
+**Nouveau / New (v0.11.0) :** L'intégration s'appelle maintenant « Club Roulez Électrique » et adopte le logo officiel du Club ; aucun changement fonctionnel. / The integration is now called "Club Roulez Électrique" and uses the official Club logo; no functional change.
 
 **Nouveau / New (v0.10.2) :** Le fichier de diagnostics masque désormais aussi l'identifiant du compte, ainsi que le nom, le numéro de série et le NIV de chaque borne. / The diagnostics file now also masks the account identifier, and each charger's name, serial number and VIN.
 

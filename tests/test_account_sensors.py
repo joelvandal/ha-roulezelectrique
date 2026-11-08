@@ -1,4 +1,4 @@
-"""Tests for Roulez Électrique account-level sensor entities.
+"""Tests for Club Roulez Électrique account-level sensor entities.
 
 Covers:
   - Account device created with correct DeviceInfo (identifiers, name, model)
@@ -135,7 +135,7 @@ def test_account_sensor_device_info():
     device_info = sensor.device_info
 
     assert (DOMAIN, "account") in device_info["identifiers"]
-    assert device_info.get("name") == "Roulez Électrique"
+    assert device_info.get("name") == "Club Roulez Électrique"
     assert device_info.get("model") == "Account"
 
 

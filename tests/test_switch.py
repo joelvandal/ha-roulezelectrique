@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique switch platform.
+"""Tests for the Club Roulez Électrique switch platform.
 
 Covers:
   - turn_on → remote-start → await_command → accepted → refresh

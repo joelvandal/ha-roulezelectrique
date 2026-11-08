@@ -1,4 +1,4 @@
-"""Diagnostics support for Roulez Électrique.
+"""Diagnostics support for Club Roulez Électrique.
 
 The whole dump goes through ``async_redact_data`` so that neither the
 credential nor anything that identifies the account or a charger leaves the

@@ -1,4 +1,4 @@
-"""Button platform for the Roulez Électrique integration.
+"""Button platform for the Club Roulez Électrique integration.
 
 Two button types:
   - Refresh: one per charger device (every vendor). Pressing it calls
@@ -15,7 +15,7 @@ Two button types:
 
 Why Refresh exists: HA's own writes (start/stop, lock, set current) already
 self-refresh instantly, so HA→app changes are never stale. But a change made
-OUTSIDE Home Assistant (e.g. from the Roulez Électrique mobile app) is only
+OUTSIDE Home Assistant (e.g. from the Club Roulez Électrique mobile app) is only
 ever picked up by HA's periodic poll (`DEFAULT_SCAN_INTERVAL` /
 the `scan_interval` option, see const.py), up to that many seconds later.
 Re-opening the HA companion app does NOT force a poll — it only re-reads HA

@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique number platform (max charging current).
+"""Tests for the Club Roulez Électrique number platform (max charging current).
 
 Covers:
   - native_min/max from server min_amps/max_amps (+ defaults when omitted)

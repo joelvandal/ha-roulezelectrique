@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique diagnostics dump (redaction)."""
+"""Tests for the Club Roulez Électrique diagnostics dump (redaction)."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ TOKEN = "secrettoken0123456789"
 def _make_entry():
     entry = MagicMock()
     entry.entry_id = "test_entry"
-    entry.title = "Roulez Électrique — roulezelectrique.club"
+    entry.title = "Club Roulez Électrique — roulezelectrique.club"
     entry.unique_id = f"user-{TOKEN[:8]}"
     entry.data = {CONF_BASE_URL: DEFAULT_BASE_URL, CONF_API_TOKEN: TOKEN}
     entry.options = {}

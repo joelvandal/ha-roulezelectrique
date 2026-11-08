@@ -1,7 +1,7 @@
-"""Constants for the Roulez Électrique Home Assistant integration."""
+"""Constants for the Club Roulez Électrique Home Assistant integration."""
 
 DOMAIN = "roulezelectrique"
-INTEGRATION_NAME = "Roulez Électrique"
+INTEGRATION_NAME = "Club Roulez Électrique"
 
 # Config entry keys
 CONF_BASE_URL = "base_url"
@@ -11,7 +11,7 @@ CONF_SCAN_INTERVAL = "scan_interval"
 # Defaults
 DEFAULT_BASE_URL = "https://roulezelectrique.club"
 # 30s (was 60s): this poll is the ONLY thing that ever picks up a change made
-# OUTSIDE Home Assistant (e.g. from the Roulez Électrique mobile app) — HA's
+# OUTSIDE Home Assistant (e.g. from the Club Roulez Électrique mobile app) — HA's
 # own writes already self-refresh instantly via async_request_refresh() (see
 # number.py/switch.py), so only the app→HA direction was ever waiting on this
 # timer. Halving it halves worst-case latency for that direction. Safe to

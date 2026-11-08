@@ -1,6 +1,6 @@
-"""Roulez Électrique Home Assistant integration.
+"""Club Roulez Électrique Home Assistant integration.
 
-This integration connects Home Assistant to the Roulez Électrique EV charging
+This integration connects Home Assistant to the Club Roulez Électrique EV charging
 rewards platform (roulezelectrique.club). It exposes your chargers as HA
 devices with live sensor data. OCPP-capable chargers also get a switch entity
 for remote start/stop.
@@ -31,7 +31,7 @@ _LEGACY_ACCOUNT_UNIQUE_ID_PREFIX = "account_account_"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Roulez Électrique from a config entry.
+    """Set up Club Roulez Électrique from a config entry.
 
     Creates the API client, coordinator, performs initial data fetch, migrates
     any stale entity-registry unique_ids from a past bug, then forwards setup
@@ -115,7 +115,7 @@ def _async_migrate_account_sensor_unique_ids(hass: HomeAssistant, entry: ConfigE
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a Roulez Électrique config entry."""
+    """Unload a Club Roulez Électrique config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)

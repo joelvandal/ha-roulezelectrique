@@ -1,4 +1,4 @@
-"""Switch platform for the Roulez Électrique integration.
+"""Switch platform for the Club Roulez Électrique integration.
 
 Three switch types:
   - Charge switch: created for every CONTROLLABLE-capable charger — OCPP,

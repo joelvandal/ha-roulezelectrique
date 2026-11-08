@@ -1,4 +1,4 @@
-"""Base entity class for the Roulez Électrique integration.
+"""Base entity class for the Club Roulez Électrique integration.
 
 Each physical charger becomes one HA Device. All entity types (sensor,
 binary_sensor, switch) inherit from RoulezElectriqueEntity and share:
@@ -20,7 +20,7 @@ from .coordinator import RoulezElectriqueCoordinator
 
 
 class RoulezElectriqueEntity(CoordinatorEntity[RoulezElectriqueCoordinator]):
-    """Base class for all Roulez Électrique entities.
+    """Base class for all Club Roulez Électrique entities.
 
     Subclasses must set `_attr_unique_id` and `_attr_translation_key`.
     """

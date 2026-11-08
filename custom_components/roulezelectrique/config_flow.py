@@ -1,4 +1,4 @@
-"""Config flow for the Roulez Électrique integration.
+"""Config flow for the Club Roulez Électrique integration.
 
 Steps:
   user  → ask for base_url + api_token; validate via GET /state
@@ -43,7 +43,7 @@ def _token_schema() -> vol.Schema:
 
 
 class RoulezElectriqueConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Roulez Électrique."""
+    """Handle a config flow for Club Roulez Électrique."""
 
     VERSION = 1
 
@@ -169,7 +169,7 @@ class RoulezElectriqueConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def _entry_title(self) -> str:
         host = self._base_url.replace("https://", "").replace("http://", "")
-        return f"Roulez Électrique — {host}"
+        return f"Club Roulez Électrique — {host}"
 
 
 class RoulezElectriqueOptionsFlow(OptionsFlow):

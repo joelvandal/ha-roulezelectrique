@@ -1,4 +1,4 @@
-"""Tests for the Roulez Électrique button platform (manual refresh).
+"""Tests for the Club Roulez Électrique button platform (manual refresh).
 
 Covers:
   - a refresh button is created per charger
