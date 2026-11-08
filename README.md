@@ -11,7 +11,7 @@ Connect your [Club Roulez Électrique](https://roulezelectrique.club) EV charger
 
 ---
 
-**Nouveau / New (v0.11.1) :** Les nouveaux contrôles (démarrer/arrêter, courant maximal) apparaissent automatiquement quand le serveur en ajoute pour une borne, sans recharger l'intégration. / New controls (start/stop, max current) now appear automatically when the server adds them for a charger, with no reload.
+**Nouveau / New (v0.11.1) :** Les nouveaux contrôles (démarrer/arrêter, courant maximal) apparaissent automatiquement dès qu'une borne devient contrôlable, sans recharger l'intégration. / New controls (start/stop, max current) now appear automatically as soon as a charger becomes controllable, with no reload.
 
 **Nouveau / New (v0.11.0) :** L'intégration s'appelle maintenant « Club Roulez Électrique » et adopte le logo officiel du Club ; aucun changement fonctionnel. / The integration is now called "Club Roulez Électrique" and uses the official Club logo; no functional change.
 

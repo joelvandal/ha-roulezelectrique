@@ -84,6 +84,10 @@ async def async_setup_entry(
     coordinator: RoulezElectriqueCoordinator = hass.data[DOMAIN][entry.entry_id]
     client: RoulezElectriqueApiClient = hass.data[DOMAIN][f"{entry.entry_id}_client"]
 
+    # Chargers already on the EVduty path (see _build). Remembered so a charger
+    # that got the EVduty slider can never also get the generic one later.
+    evduty_path: set[int] = set()
+
     def _build(data: CoordinatorData) -> list[tuple[Hashable, Callable[[], Any]]]:
         found: list[tuple[Hashable, Callable[[], Any]]] = []
         for charger_id, charger_data in data.chargers.items():
@@ -91,13 +95,27 @@ async def async_setup_entry(
             # true for OCPP (online), Wallbox (active account), and Sigenergy AC
             # (active account). Older servers without this field fall back to the
             # legacy is_ocpp/vendor check so the entity still appears on upgrade.
+            #
+            # EVduty/Elmec exception (0.11.1): before the server has read such a
+            # borne's first configuration it reports current_limit_controllable
+            # = true (optimistic window), then flips to
+            # max_current_controllable = true. With dynamic addition the generic
+            # slider created in that window would stay forever as an unavailable
+            # duplicate. The server advertises the "max_current" capability up
+            # front (before the baseline read, in the very first poll) for
+            # exactly these chargers, so that capability — or having already
+            # created the EVduty slider — marks the EVduty path and the generic
+            # slider is never created for it. Trade-off: no slider at all until
+            # the server reports max_current_controllable for such a borne.
+            if "max_current" in (charger_data.get("capabilities") or []):
+                evduty_path.add(charger_id)
             is_limit_controllable = charger_data.get("current_limit_controllable")
             if is_limit_controllable is None:
                 # Older server: fall back to legacy gate (OCPP or Wallbox).
                 is_limit_controllable = (
                     charger_data.get("is_ocpp") or charger_data.get("vendor") == "wallbox"
                 )
-            if is_limit_controllable:
+            if is_limit_controllable and charger_id not in evduty_path:
                 found.append(
                     (
                         (charger_id, "max_current"),
@@ -111,11 +129,13 @@ async def async_setup_entry(
             # "Core"-only OCPP borne (EVduty/Elmec): SetChargingProfile is refused
             # by the firmware, so the server exposes the MaxCurrent path instead.
             # Mutually exclusive with the flag above — checked second so a server
-            # bug that set both could never produce two competing sliders. (A
-            # charger that later flips from this path to the power-limit path
-            # could in theory end up with both sliders; the unique_ids differ
-            # and nothing is removed, matching the "never remove" rule.)
+            # bug that set both could never produce two competing sliders.
+            # The realistic direction is the reverse of the generic-first order
+            # above: the optimistic window (generic flag true), then EVduty —
+            # handled by the evduty_path rule, which keeps the generic slider
+            # from ever being created for these chargers.
             if charger_data.get("max_current_controllable"):
+                evduty_path.add(charger_id)
                 found.append(
                     (
                         (charger_id, "evduty_max_current"),

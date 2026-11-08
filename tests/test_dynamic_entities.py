@@ -149,3 +149,39 @@ async def test_every_platform_registers_listener_and_unsubscribes():
         assert len(h.unloads) == 1, p
         h.unloads[0]()
         assert h.coordinator.listeners == [], p
+
+
+@pytest.mark.asyncio
+async def test_evduty_optimistic_window_never_gets_the_generic_slider():
+    """Poll 1: optimistic current_limit_controllable; poll 2: EVduty flag.
+
+    The server advertises the "max_current" capability up front, so the
+    generic slider is already avoided in poll 1. Exactly one slider (EVduty).
+    """
+    base = {
+        **OCPP_CHARGER,
+        "id": 9,
+        "vendor": "evduty-ocpp",
+        "capabilities": ["power", "max_current"],
+    }
+    poll1 = {**base, "current_limit_controllable": True, "max_current_controllable": False}
+    poll2 = {**base, "current_limit_controllable": False, "max_current_controllable": True}
+    nb = Harness(number, {9: poll1})
+    await nb.setup()
+    assert nb.added == []
+    nb.coordinator.poll({9: poll2})
+    nb.coordinator.poll({9: poll2})
+    assert [type(e).__name__ for e in nb.added] == ["RoulezElectriqueEvdutyMaxCurrentNumber"]
+    # Even if the optimistic flag comes back, no generic slider is added.
+    nb.coordinator.poll({9: poll1})
+    assert len(nb.added) == 1
+
+
+@pytest.mark.asyncio
+async def test_evduty_slider_already_created_blocks_generic_even_without_capability():
+    base = {**OCPP_CHARGER, "id": 9, "vendor": "evduty-ocpp"}
+    on = {**base, "current_limit_controllable": False, "max_current_controllable": True}
+    nb = Harness(number, {9: on})
+    await nb.setup()
+    nb.coordinator.poll({9: {**base, "current_limit_controllable": True}})
+    assert [type(e).__name__ for e in nb.added] == ["RoulezElectriqueEvdutyMaxCurrentNumber"]

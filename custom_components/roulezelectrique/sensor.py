@@ -33,9 +33,9 @@ All sensors inherit availability from the base entity + coordinator success.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass, field
 from datetime import datetime
-from collections.abc import Callable, Hashable
 from typing import Any
 
 from homeassistant.components.sensor import (

@@ -42,6 +42,7 @@ def async_add_entities_dynamically(
 
     @callback
     def _add_new() -> None:
+        # Defensive: a listener only fires after a refresh, which sets data.
         if coordinator.data is None:
             return
         new = [
