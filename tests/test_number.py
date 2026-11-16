@@ -86,6 +86,25 @@ def test_range_falls_back_to_defaults_when_omitted():
     assert number.native_max_value == float(DEFAULT_MAX_AMPS)
 
 
+def test_max_ignores_stale_ceiling_below_measured_current():
+    """Issue #7: max_amps = 6 (stale configured limit) while drawing 30.4 A."""
+    charger = {**OCPP_CHARGER, "max_amps": 6, "current_a": 30.4}
+    number, _ = _make_number(charger)
+    assert number.native_max_value == float(DEFAULT_MAX_AMPS)
+
+
+def test_max_uses_measured_current_when_above_default():
+    charger = {**OCPP_CHARGER, "max_amps": 6, "current_a": 39.6}
+    number, _ = _make_number(charger)
+    assert number.native_max_value == 40.0
+
+
+def test_max_kept_when_measured_current_within_ceiling():
+    charger = {**OCPP_CHARGER, "max_amps": 6, "current_a": 6.4}
+    number, _ = _make_number(charger)
+    assert number.native_max_value == 6.0
+
+
 def test_value_uses_current_a_when_present():
     number, _ = _make_number(WALLBOX_CHARGER)  # current_a = 16
     assert number.native_value == 16.0

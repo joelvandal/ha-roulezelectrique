@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from collections.abc import Callable, Hashable
 from typing import Any
 
@@ -202,6 +203,15 @@ class RoulezElectriqueMaxCurrentNumber(RoulezElectriqueEntity, NumberEntity):
         """
         value = self._charger_data.get("max_amps")
         ceiling = float(value) if value is not None else float(DEFAULT_MAX_AMPS)
+        # Defensive guard (issue #7): a ceiling BELOW the current the borne is
+        # actually drawing cannot be its hardware limit — it is a stale
+        # configured limit (e.g. a Wallbox Pulsar Plus on OCPP reporting
+        # chargingALimitConn1 = 6 A after a reduced setpoint, while it charges
+        # at 30 A). Fall back to the generic default (or the measured current,
+        # rounded up, if higher) so the slider can be raised again.
+        measured = self._charger_data.get("current_a")
+        if measured is not None and float(measured) > ceiling + 1:
+            ceiling = max(float(DEFAULT_MAX_AMPS), float(math.ceil(float(measured))))
         return max(ceiling, self.native_min_value)
 
     @property
